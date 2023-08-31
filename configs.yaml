@@ -1,0 +1,3 @@
+node_type: SINGLE_PROCESS
+num_workers: 4
+grpc_port: 44880

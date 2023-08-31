@@ -1,0 +1,7 @@
+- file: json_config.json
+  content: |
+    {
+        "node_type": "WORKER",
+        "num_workers": 4,
+        "grpc_port": 50051
+    }

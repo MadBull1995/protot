@@ -1,0 +1,26 @@
+{
+    "organization": {
+        "domain": "sylklabs"
+    },
+    "configs": {
+        "host": "localhost",
+        "port": 44880,
+        "protoBasePath": "protos",
+        "codeBasePath": "src"
+    },
+    "sylkVersion": "0.4.0",
+    "project": {
+        "uri": "/Users/amitshmulevitch/proto-tasker",
+        "name": "proto-tasker",
+        "packageName": "prototasker",
+        "clients": [
+            {
+                "language": "python",
+                "outDir": "/Users/amitshmulevitch/proto-tasker/src/client/python"
+            }
+        ],
+        "server": {
+            "language": "python"
+        }
+    }
+}

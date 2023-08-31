@@ -1,0 +1,134 @@
+{
+    "organization": {
+        "domain": "sylklabs"
+    },
+    "packages": {
+        "sylklabs/core": {
+            "name": "core",
+            "package": "sylklabs.core",
+            "messages": [
+                {
+                    "name": "Task",
+                    "fullName": "sylklabs.core.Task",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "fullName": "sylklabs.core.Task.id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 1
+                        },
+                        {
+                            "name": "payload",
+                            "fullName": "sylklabs.core.Task.payload",
+                            "fieldType": "TYPE_MESSAGE",
+                            "label": "LABEL_OPTIONAL",
+                            "messageType": "google.protobuf.Any",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "task"
+                },
+                {
+                    "name": "Config",
+                    "fullName": "sylklabs.core.Config",
+                    "fields": [
+                        {
+                            "name": "node_type",
+                            "fullName": "sylklabs.core.Config.node_type",
+                            "fieldType": "TYPE_ENUM",
+                            "label": "LABEL_OPTIONAL",
+                            "enumType": "sylklabs.core.NodeType",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 1
+                        },
+                        {
+                            "name": "num_threads",
+                            "fullName": "sylklabs.core.Config.num_threads",
+                            "fieldType": "TYPE_INT32",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
+                        },
+                        {
+                            "name": "grpc_port",
+                            "fullName": "sylklabs.core.Config.grpc_port",
+                            "fieldType": "TYPE_INT32",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 3
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "configs"
+                }
+            ],
+            "enums": [
+                {
+                    "name": "NodeType",
+                    "fullName": "sylklabs.core.NodeType",
+                    "description": "The possible node types for proto tasker process",
+                    "values": [
+                        {
+                            "name": "SINGLE_PROCESS",
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        },
+                        {
+                            "name": "WORKER",
+                            "index": 1,
+                            "number": 1,
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        },
+                        {
+                            "name": "SCHEDULER",
+                            "index": 1,
+                            "number": 2,
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "enum",
+                    "tag": "configs"
+                }
+            ],
+            "type": "package",
+            "dependencies": [
+                "google.protobuf"
+            ]
+        }
+    },
+    "configs": {
+        "host": "localhost",
+        "port": 44880,
+        "protoBasePath": "protos",
+        "codeBasePath": "src"
+    },
+    "sylkVersion": "0.4.0",
+    "project": {
+        "uri": "/Users/amitshmulevitch/proto-tasker",
+        "name": "proto-tasker",
+        "packageName": "prototasker",
+        "clients": [
+            {
+                "language": "python",
+                "outDir": "/Users/amitshmulevitch/proto-tasker/src/client/python"
+            }
+        ],
+        "server": {
+            "language": "python"
+        }
+    }
+}

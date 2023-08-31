@@ -1,0 +1,14 @@
+[INFO] Scheduler starting
+[DEBUG] Loaded configurations Config {
+    node_type: SingleProcess,
+    num_workers: 4,
+    grpc_port: 44880,
+}
+[INFO] [0] worker starting
+[INFO] [1] worker starting
+[INFO] [2] worker starting
+[INFO] [3] worker starting
+[INFO] [0] worker executing job -> 0
+[INFO] [1] worker executing job -> 1
+[DEBUG] server interrupted
+[DEBUG] second interrupt received, force quitting...

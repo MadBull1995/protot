@@ -1,0 +1,5 @@
+- file: yaml_config.yaml
+  content: |
+    node_type: WORKER
+    num_workers: 4
+    grpc_port: 50051
