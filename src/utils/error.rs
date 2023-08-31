@@ -56,7 +56,7 @@ impl std::fmt::Display for SchedulerError {
             SchedulerError::SchedulerServiceError(msg) => {
                 write!(f, "Scheduler service error: {}", msg)
             }
-            _ => write!(f, "Unknown internal scheduler error"),
+            // _ => write!(f, "Unknown internal scheduler error"),
         }
     }
 }

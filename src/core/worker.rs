@@ -3,24 +3,12 @@ use std::{
         atomic::{AtomicBool, AtomicUsize},
         Arc,
     },
-    thread, time::Duration,
+    thread,
 };
 
 use crate::logger;
 
-use super::worker_pool::{Sentinel, WorkerPoolSharedData, TaskExecutor};
-pub struct MyExecutionLogic {
-
-}
-
-impl TaskExecutor for MyExecutionLogic {
-    fn execute(&self) {
-        thread::sleep(std::time::Duration::from_secs(5));
-
-        // Implement the execution logic for MyExecutionLogic
-        println!("Executing MyExecutionLogic...");
-    }
-}
+use super::worker_pool::{Sentinel, WorkerPoolSharedData};
 
 #[derive(Debug, Clone, Copy)]
 pub enum WorkerType {
@@ -105,10 +93,13 @@ impl Worker for LocalWorker {
         }
 
         let worker_id = self.id;
+        let pool_name = shared_data_clone
+            .get_name()
+            .unwrap_or_else(|| "".to_string());
 
         logger::log(
             logger::LogLevel::INFO,
-            format!("[{}] worker starting", worker_id).as_str(),
+            format!("[{}][{}] worker starting", pool_name, worker_id).as_str(),
         );
 
         builder
@@ -138,7 +129,14 @@ impl Worker for LocalWorker {
                         Ok(job) => job,
                         // The ThreadPool was dropped.
                         Err(_) => {
-                            logger::log(logger::LogLevel::DEBUG, format!("Worker {} disconnected; shutting down.", worker_id).as_str());
+                            logger::log(
+                                logger::LogLevel::DEBUG,
+                                format!(
+                                    "[{}][{}] disconnected; shutting down.",
+                                    pool_name, worker_id
+                                )
+                                .as_str(),
+                            );
                             break;
                         }
                     };
@@ -146,12 +144,17 @@ impl Worker for LocalWorker {
                     binding.process_new_excution_metrics();
                     logger::log(
                         logger::LogLevel::INFO,
-                        format!("[{}] worker executing job -> {}", worker_id, job.get_id())
-                            .as_str(),
+                        format!(
+                            "[{}][{}] worker executing job -> {}",
+                            pool_name,
+                            worker_id,
+                            job.get_id()
+                        )
+                        .as_str(),
                     );
-                    println!("{:?}",job.get_id());
+                    println!("{:?}", job.get_id());
                     // Execute the job and update counters.
-                    job.excute_job();
+                    job.execute_job();
 
                     binding.decrement_thread_active();
 
@@ -188,34 +191,26 @@ impl Worker for LocalWorker {
 mod tests {
 
     use crate::core::job::Job;
+    use crate::internal::sylklabs::scheduler::v1::ExecuteRequest;
 
     use super::*;
-    use std::collections::VecDeque;
-    use std::sync::atomic::Ordering;
     use std::sync::mpsc::channel;
-    use std::sync::Mutex;
 
     #[test]
     fn test_local_worker_spawn() {
-        let (_, rx) = channel::<Job<'static>>();
+        let (_, rx) = channel::<Job<'static, ExecuteRequest>>();
 
         // Create mock shared data instance
-        let shared_data = WorkerPoolSharedData::new_partial(1, None, rx, false);
+        let shared_data =
+            WorkerPoolSharedData::new_partial(1, None, rx, false, Some(String::from("Test")));
         let mut shared_data_clone = Arc::clone(&shared_data);
 
-        // Add a mock job to the receiver
-        // let mock_task = || println!("mock process");
-        // let mock_job = Box::new(Job {
-        //     id: 42,
-        //     job: Box::new(mock_task),
-        // });
-        
         // Create the worker
         // let worker: LocalWorker = LocalWorker::new(1, shared_data.clone());
         let mut workers = Vec::new();
         let worker =
             Arc::new(LocalWorker::new(1, Arc::clone(&shared_data_clone))) as Arc<dyn Worker>;
-        // let cloned_w = worker.clone();
+
         worker.spawn();
         workers.push(worker);
 

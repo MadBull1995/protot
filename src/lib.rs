@@ -58,9 +58,11 @@ pub mod core;
 pub mod internal;
 mod server;
 mod utils;
-use std::thread;
+use crate::core::worker_pool::TaskExecutor;
+use std::{process, thread, time::Duration};
 
-use internal::sylklabs;
+use internal::sylklabs::{self, core::Task, scheduler::v1::ExecuteRequest};
+use protobuf::well_known_types::{any::Any, struct_};
 pub use utils::{configs::config_load, error::SchedulerError, logger};
 
 use crate::server::start_grpc_server;
@@ -101,23 +103,75 @@ fn init_scheduler_server() -> Result<(), SchedulerError> {
     Ok(())
 }
 
+struct TaskExecutorImpl1 {}
+
+impl TaskExecutor for TaskExecutorImpl1 {
+    fn execute(&self, args: ExecuteRequest) {
+        let task: Task = args.clone().task.unwrap().clone();
+        let payload = task.payload.unwrap();
+        let task_id = args.task.unwrap().id;
+        let mut data = Any::new();
+        data.type_url = payload.type_url;
+        data.value = payload.value;
+
+        let data = Any::unpack::<struct_::Struct>(&data);
+        println!("task excution 1 with dynamic args! {task_id}");
+        thread::sleep(Duration::from_secs(5))
+    }
+}
+
+struct TaskExecutorImpl2 {}
+
+impl TaskExecutor for TaskExecutorImpl2 {
+    fn execute(&self, args: ExecuteRequest) {
+        let task: Task = args.clone().task.unwrap().clone();
+        let payload = task.payload.unwrap();
+        let task_id = args.task.unwrap().id;
+        let mut data = Any::new();
+        data.type_url = payload.type_url;
+        data.value = payload.value;
+
+        let data = Any::unpack::<struct_::Struct>(&data);
+        thread::sleep(Duration::from_secs(1));
+        println!("task excution 2 with dynamic args! {}",task_id);
+    }
+}
+
 fn init_single_process_scheduler(cfg: sylklabs::core::Config) -> Result<(), SchedulerError> {
     let pool = core::worker_pool::Builder::new()
         .num_threads(cfg.num_workers as usize)
         .thread_name("scheduler".to_string())
         .thread_stack_size(32 * 1024 * 1024)
         .build()?;
-    pool.execute(|| println!("started worker pool"));
+    let _ = pool.execute(
+        |args| println!("started worker pool: {:#?}", args),
+        ExecuteRequest {
+            task: Some(Task {
+                id: "some wiered task".to_string(),
+                ..Default::default()
+            }),
+        },
+    );
+
+    {
+        pool.executors
+            .lock()
+            .unwrap()
+            .register_task("task-1", TaskExecutorImpl1 {});
+        pool.executors
+            .lock()
+            .unwrap()
+            .register_task("task-2", TaskExecutorImpl2 {});
+    }
+
     // Todo start scheduler server
     match start_grpc_server(cfg.grpc_port, pool) {
         Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
             "Scheduler errored: {:?}",
             &*err
         )))?,
-        Ok(_) => println!("server shutdown"),
+        Ok(_) => println!("Goodbye :)"),
     };
-
-    // println!("{:?}",pool);
 
     Ok(())
 }

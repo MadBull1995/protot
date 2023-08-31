@@ -13,19 +13,30 @@ data.update({
 })
 any = Any()
 any.Pack(data)
-task=task_pb2.Task(
+task1=task_pb2.Task(
     id="task-1",
     payload=any
 )
-exec_req = scheduler_pb2.ExecuteRequest(
-    task=task
+task2=task_pb2.Task(
+    id="task-2",
+    payload=any
+)
+exec_req_1 = scheduler_pb2.ExecuteRequest(
+    task=task1
+)
+exec_req_2 = scheduler_pb2.ExecuteRequest(
+    task=task2
 )
 sched_req = scheduler_pb2.ScheduleRequest(
-    task=task
+    task=task1
 )
 
 res = client.Execute(
-    exec_req
+    exec_req_1
+)
+
+res = client.Execute(
+    exec_req_2
 )
 
 # res = client.Schedule(

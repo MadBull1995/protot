@@ -1,14 +1,62 @@
 [INFO] Scheduler starting
 [DEBUG] Loaded configurations Config {
     node_type: SingleProcess,
-    num_workers: 4,
+    num_workers: 10,
     grpc_port: 44880,
 }
-[INFO] [0] worker starting
-[INFO] [1] worker starting
-[INFO] [2] worker starting
-[INFO] [3] worker starting
-[INFO] [0] worker executing job -> 0
-[INFO] [1] worker executing job -> 1
+[INFO] [scheduler][0] worker starting
+[INFO] [scheduler][1] worker starting
+[INFO] [scheduler][2] worker starting
+[INFO] [scheduler][3] worker starting
+[INFO] [scheduler][4] worker starting
+[INFO] [scheduler][5] worker starting
+[INFO] [scheduler][6] worker starting
+[INFO] [scheduler][7] worker starting
+[INFO] [scheduler][8] worker starting
+[INFO] [scheduler][9] worker starting
+[INFO] [scheduler][0] worker executing job -> 0
+[INFO] [scheduler][1] worker executing job -> 1
+[DEBUG] executing task: task-1
+[INFO] [scheduler][2] worker executing job -> 2
+[INFO] [scheduler][3] worker executing job -> 3
+[INFO] [scheduler][4] worker executing job -> 4
+[INFO] [scheduler][5] worker executing job -> 5
+[INFO] [scheduler][7] worker executing job -> 6
+[INFO] [scheduler][6] worker executing job -> 7
+[INFO] [scheduler][8] worker executing job -> 8
+[INFO] [scheduler][9] worker executing job -> 9
+[INFO] [scheduler][0] worker executing job -> 10
+[INFO] [scheduler][1] worker executing job -> 11
+[DEBUG] executing task: task-2
+[INFO] [scheduler][2] worker executing job -> 12
+[DEBUG] executing task: task-1
 [DEBUG] server interrupted
-[DEBUG] second interrupt received, force quitting...
+[INFO] [scheduler][3] worker executing job -> 13
+[DEBUG] executing task: task-2
+[INFO] [scheduler][4] worker executing job -> 14
+[DEBUG] executing task: task-1
+[DEBUG] executing task: task-2
+[INFO] [scheduler][5] worker executing job -> 15
+[INFO] [scheduler][7] worker executing job -> 16
+[DEBUG] executing task: task-2
+[INFO] [scheduler][7] worker executing job -> 17
+[DEBUG] executing task: task-1
+[DEBUG] executing task: task-1
+[INFO] [scheduler][7] worker executing job -> 18
+[DEBUG] executing task: task-2
+[INFO] [scheduler][9] worker executing job -> 19
+[INFO] [scheduler][0] worker executing job -> 20
+[DEBUG] executing task: task-2
+[DEBUG] executing task: task-2
+[DEBUG] executing task: task-1
+[DEBUG] executing task: task-2
+[DEBUG] executing task: task-1
+[DEBUG] executing task: task-1
+[DEBUG] executing task: task-2
+[DEBUG] executing task: task-2
+[DEBUG] executing task: task-1
+[DEBUG] executing task: task-1
+[WARN] Failed to update join_generation
+[DEBUG] [scheduler][0] disconnected; shutting down.
+[DEBUG] [scheduler][2] disconnected; shutting down.
+[DEBUG] [scheduler][3] disconnected; shutting down.

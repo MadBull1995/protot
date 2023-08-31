@@ -1,7 +1,8 @@
 use std::{
+    collections::HashMap,
     fmt,
     sync::{
-        atomic::{AtomicUsize, Ordering, AtomicBool},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc::{channel, Receiver, Sender},
         Arc, Condvar, Mutex,
     },
@@ -12,11 +13,61 @@ use super::{
     job::Job,
     worker::{LocalWorker, Worker, WorkerType},
 };
-use crate::SchedulerError;
-use crate::{core::worker, logger};
 
-pub trait TaskExecutor: Send {
-    fn execute(&self);
+// Lib modules
+use crate::{internal::sylklabs::scheduler::v1::ExecuteRequest, logger, SchedulerError};
+
+// Trait for task execution
+pub trait TaskExecutor: Send + Sync + 'static {
+    fn execute(&self, args: ExecuteRequest);
+}
+
+// Struct to hold task executions and their argument implementations
+pub struct TaskRegistry {
+    registry: HashMap<String, Box<dyn TaskExecutor>>,
+}
+
+impl TaskRegistry {
+    pub fn new() -> Self {
+        TaskRegistry {
+            registry: HashMap::new(),
+        }
+    }
+
+    pub fn register_task<E>(&mut self, task_name: &str, executor: E)
+    where
+        E: TaskExecutor,
+    {
+        self.registry
+            .insert(task_name.to_string(), Box::new(executor));
+    }
+
+    // pub fn execute_task(
+    //     &self,
+    //     task_name: &str,
+    //     args: ExecuteRequest,
+    // ) -> Result<(), &'static str> {
+    //     if let Some(executor) = self.registry.get(task_name) {
+    //         executor.execute(args);
+    //         Ok(())
+    //     } else {
+    //         Err("Task not found")
+    //     }
+    // }
+
+    pub fn get_executor(
+        &self,
+        excutor_name: &str,
+    ) -> Result<&Box<dyn TaskExecutor>, SchedulerError> {
+        if let Some(executor) = self.registry.get(excutor_name) {
+            Ok(executor)
+        } else {
+            Err(SchedulerError::TaskExecutionError(format!(
+                "Executor not found for task: {}",
+                excutor_name
+            )))
+        }
+    }
 }
 
 pub struct Sentinel<'a> {
@@ -63,6 +114,7 @@ pub struct Builder {
     thread_stack_size: Option<usize>,
     workers_type: WorkerType,
     force_shutdown: Option<bool>,
+    executers: Option<bool>,
 }
 
 impl Builder {
@@ -72,6 +124,7 @@ impl Builder {
             thread_name: None,
             thread_stack_size: None,
             force_shutdown: None,
+            executers: None,
             ..Default::default()
         }
     }
@@ -101,6 +154,11 @@ impl Builder {
         self
     }
 
+    pub fn executors(mut self) -> Builder {
+        self.executers = Some(true);
+        self
+    }
+
     pub fn build(self) -> Result<WorkerPool, SchedulerError> {
         let num_threads = self.num_threads.unwrap_or_else(num_cpus::get);
         let force_shutdown = self.force_shutdown.unwrap_or_else(|| false);
@@ -109,26 +167,31 @@ impl Builder {
                 "Number of threads is negative, must be unsigned integer"
             )))
         } else {
-            let (tx, rx) = channel::<Job<'static>>();
+            let (tx, rx) = channel::<Job<'static, ExecuteRequest>>();
 
             let shared_data = match self.workers_type {
-                WorkerType::Local => initialize_thread_pool(num_threads, rx, force_shutdown),
+                WorkerType::Local => {
+                    initialize_thread_pool(num_threads, rx, force_shutdown, self.thread_name)
+                }
                 WorkerType::Remote => Err(SchedulerError::PoolCreationError(
                     "Cant serve gRPC based workers currently".to_string(),
                 ))?,
             };
+            let registry = Arc::new(Mutex::new(TaskRegistry::new()));
 
             Ok(WorkerPool {
                 jobs: Some(tx),
                 shared_data,
+                executors: registry,
             })
         }
     }
 }
 
 pub struct WorkerPool {
-    jobs: Option<Sender<Job<'static>>>,
+    jobs: Option<Sender<Job<'static, ExecuteRequest>>>,
     shared_data: Arc<WorkerPoolSharedData>,
+    pub executors: Arc<Mutex<TaskRegistry>>,
 }
 
 impl WorkerPool {
@@ -143,23 +206,35 @@ impl WorkerPool {
             .build()
     }
 
-    pub fn execute<F>(&self, job: F)
+    pub fn execute<F>(&self, job: F, args: ExecuteRequest) -> Result<(), SchedulerError>
     where
-        F: FnOnce() + Send + 'static,
+        F: FnOnce(ExecuteRequest) + Send + 'static,
     {
         let job_count = self.shared_data.job_counter.fetch_add(1, Ordering::SeqCst);
         self.shared_data.queued_count.fetch_add(1, Ordering::SeqCst);
+        let mut task = match args.clone().task {
+            Some(t) => { t },
+            None => Err(SchedulerError::TaskExecutionError("task execution must include valid data".to_string()))?
+        };
+        task.id = job_count.to_string();
+        let request = ExecuteRequest {
+            task: Some(task)
+        };
         if self.jobs.is_some() {
-            self.jobs.as_ref()
+            self.jobs
+                .as_ref()
                 .unwrap()
                 .send(Job {
                     id: job_count,
+                    data: request,
                     job: Box::new(job),
                 })
                 .expect("WorkerPool::execute unable to send job into queue.");
         } else {
-            panic!("Couldn't excute the job as the WorkerPool is not initalized properly");
+            Err(SchedulerError::TaskExecutionError("Couldn't excute the job as the WorkerPool is not initalized properly".to_string()))?
         }
+
+        Ok(())
     }
 
     pub fn queued_count(&self) -> usize {
@@ -191,32 +266,32 @@ impl WorkerPool {
             && self.shared_data.has_work()
         {
             if self.shared_data.force_shutdown.load(Ordering::SeqCst) {
-                logger::log(logger::LogLevel::DEBUG, "Force shutdown activated, exiting join");
+                logger::log(
+                    logger::LogLevel::DEBUG,
+                    "Force shutdown activated, exiting join",
+                );
                 return;
             }
             lock = self.shared_data.empty_condvar.wait(lock).unwrap();
         }
 
         // increase generation if we are the first thread to come out of the loop
-        if let Err(_) = self.shared_data
-            .join_generation
-            .compare_exchange(
-                generation,
-                generation.wrapping_add(1),
-                Ordering::SeqCst,
-                Ordering::SeqCst,
-            ) {
-                // Log the failure or take other actions.
-                logger::log(logger::LogLevel::WARN, "Failed to update join_generation");
-            }
+        if let Err(_) = self.shared_data.join_generation.compare_exchange(
+            generation,
+            generation.wrapping_add(1),
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        ) {
+            // Log the failure or take other actions.
+            logger::log(logger::LogLevel::WARN, "Failed to update join_generation");
+        }
     }
 }
-
 
 impl Drop for WorkerPool {
     fn drop(&mut self) {
         drop(self.jobs.take());
-        
+
         self.join();
     }
 }
@@ -262,6 +337,7 @@ impl Clone for WorkerPool {
         WorkerPool {
             jobs: self.jobs.clone(),
             shared_data: self.shared_data.clone(),
+            executors: self.executors.clone(),
         }
     }
 }
@@ -288,7 +364,7 @@ impl fmt::Debug for WorkerPool {
 
 pub struct WorkerPoolSharedData {
     name: Option<String>,
-    pub job_receiver: Arc<Mutex<Receiver<Job<'static>>>>,
+    pub job_receiver: Arc<Mutex<Receiver<Job<'static, ExecuteRequest>>>>,
     empty_trigger: Mutex<()>,
     empty_condvar: Condvar,
     join_generation: AtomicUsize,
@@ -306,11 +382,12 @@ impl WorkerPoolSharedData {
     pub fn new_partial(
         num_threads: usize,
         thread_stack_size: Option<usize>,
-        receiver: Receiver<Job<'static>>,
+        receiver: Receiver<Job<'static, ExecuteRequest>>,
         force_shutdown: bool,
+        pool_name: Option<String>,
     ) -> Arc<Self> {
         Arc::new(Self {
-            name: None,
+            name: pool_name,
             workers: Vec::new(), // empty for now
             job_receiver: Arc::new(Mutex::new(receiver)),
             empty_condvar: Condvar::new(),
@@ -324,30 +401,6 @@ impl WorkerPoolSharedData {
             force_shutdown: AtomicBool::new(force_shutdown),
             stack_size: thread_stack_size,
         })
-    }
-
-    pub fn new(
-        num_threads: usize,
-        thread_stack_size: Option<usize>,
-        reciever: Receiver<Job<'static>>,
-    ) -> Arc<Self> {
-        let shared_date = Arc::new(WorkerPoolSharedData {
-            name: None,
-            workers: Vec::with_capacity(num_threads),
-            job_receiver: Arc::new(Mutex::new(reciever)),
-            empty_condvar: Condvar::new(),
-            empty_trigger: Mutex::new(()),
-            join_generation: AtomicUsize::new(0),
-            queued_count: AtomicUsize::new(0),
-            active_count: AtomicUsize::new(0),
-            max_thread_count: AtomicUsize::new(num_threads),
-            panic_count: AtomicUsize::new(0),
-            job_counter: AtomicUsize::new(0),
-            force_shutdown: AtomicBool::new(false),
-            stack_size: thread_stack_size,
-        });
-
-        shared_date
     }
 
     pub fn populate_workers(&mut self, workers: Vec<Arc<dyn Worker>>) {
@@ -397,10 +450,12 @@ impl WorkerPoolSharedData {
 // Function to initialize the pool
 pub fn initialize_thread_pool(
     num_threads: usize,
-    receiver: Receiver<Job<'static>>,
+    receiver: Receiver<Job<'static, ExecuteRequest>>,
     force_shutdown: bool,
+    pool_name: Option<String>,
 ) -> Arc<WorkerPoolSharedData> {
-    let shared_data = WorkerPoolSharedData::new_partial(num_threads, None, receiver, force_shutdown);
+    let shared_data =
+        WorkerPoolSharedData::new_partial(num_threads, None, receiver, force_shutdown, pool_name);
     let mut shared_data_clone = Arc::clone(&shared_data);
 
     let mut workers = Vec::new();
