@@ -10,16 +10,11 @@ use crate::logger;
 
 use super::worker_pool::{Sentinel, WorkerPoolSharedData};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum WorkerType {
+    #[default]
     Local,
     Remote,
-}
-
-impl Default for WorkerType {
-    fn default() -> Self {
-        WorkerType::Local
-    }
 }
 
 pub fn create_worker(
@@ -64,10 +59,10 @@ impl Worker for LocalWorker {
     /// Returns a new `Worker` instance.
     fn new(id: usize, shared_data: Arc<WorkerPoolSharedData>) -> LocalWorker {
         LocalWorker {
-            id,
-            shared_data: shared_data,
             is_active: AtomicBool::new(false),
             jobs_processed: AtomicUsize::new(0),
+            shared_data,
+            id,
             // ... initialize other fields
         }
     }

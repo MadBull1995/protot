@@ -59,7 +59,7 @@ pub mod internal;
 mod server;
 mod utils;
 use crate::core::worker_pool::TaskExecutor;
-use std::{process, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use internal::sylklabs::{self, core::Task, scheduler::v1::ExecuteRequest};
 use protobuf::well_known_types::{any::Any, struct_};
@@ -99,9 +99,9 @@ pub fn start() -> Result<(), SchedulerError> {
     Ok(())
 }
 
-fn init_scheduler_server() -> Result<(), SchedulerError> {
-    Ok(())
-}
+// fn init_scheduler_server() -> Result<(), SchedulerError> {
+//     Ok(())
+// }
 
 struct TaskExecutorImpl1 {}
 

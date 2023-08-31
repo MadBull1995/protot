@@ -27,7 +27,14 @@ pub struct TaskRegistry {
     registry: HashMap<String, Box<dyn TaskExecutor>>,
 }
 
+impl Default for TaskRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaskRegistry {
+
     pub fn new() -> Self {
         TaskRegistry {
             registry: HashMap::new(),
@@ -162,29 +169,23 @@ impl Builder {
     pub fn build(self) -> Result<WorkerPool, SchedulerError> {
         let num_threads = self.num_threads.unwrap_or_else(num_cpus::get);
         let force_shutdown = self.force_shutdown.unwrap_or_else(|| false);
-        if num_threads <= 0 {
-            Err(SchedulerError::PoolCreationError(format!(
-                "Number of threads is negative, must be unsigned integer"
-            )))
-        } else {
-            let (tx, rx) = channel::<Job<'static, ExecuteRequest>>();
+        let (tx, rx) = channel::<Job<'static, ExecuteRequest>>();
 
-            let shared_data = match self.workers_type {
-                WorkerType::Local => {
-                    initialize_thread_pool(num_threads, rx, force_shutdown, self.thread_name)
-                }
-                WorkerType::Remote => Err(SchedulerError::PoolCreationError(
-                    "Cant serve gRPC based workers currently".to_string(),
-                ))?,
-            };
-            let registry = Arc::new(Mutex::new(TaskRegistry::new()));
+        let shared_data = match self.workers_type {
+            WorkerType::Local => {
+                initialize_thread_pool(num_threads, rx, force_shutdown, self.thread_name)
+            }
+            WorkerType::Remote => Err(SchedulerError::PoolCreationError(
+                "Cant serve gRPC based workers currently".to_string(),
+            ))?,
+        };
+        let registry = Arc::new(Mutex::new(TaskRegistry::new()));
 
-            Ok(WorkerPool {
-                jobs: Some(tx),
-                shared_data,
-                executors: registry,
-            })
-        }
+        Ok(WorkerPool {
+            jobs: Some(tx),
+            shared_data,
+            executors: registry,
+        })
     }
 }
 
@@ -256,7 +257,7 @@ impl WorkerPool {
     pub fn join(&self) {
         // fast path requires no mutex
         if self.shared_data.has_work() == false {
-            return ();
+            return;
         }
 
         let generation = self.shared_data.join_generation.load(Ordering::SeqCst);
@@ -276,12 +277,12 @@ impl WorkerPool {
         }
 
         // increase generation if we are the first thread to come out of the loop
-        if let Err(_) = self.shared_data.join_generation.compare_exchange(
+        if self.shared_data.join_generation.compare_exchange(
             generation,
             generation.wrapping_add(1),
             Ordering::SeqCst,
             Ordering::SeqCst,
-        ) {
+        ).is_err() {
             // Log the failure or take other actions.
             logger::log(logger::LogLevel::WARN, "Failed to update join_generation");
         }
@@ -414,10 +415,11 @@ impl WorkerPoolSharedData {
     /// Notify all observers joining this pool if there is no more work to do.
     pub fn no_work_notify_all(&self) {
         if !self.has_work() {
-            *self
+            let p = self
                 .empty_trigger
                 .lock()
                 .expect("Unable to notify all joining threads");
+            drop(p);
             self.empty_condvar.notify_all();
         }
     }

@@ -3,7 +3,7 @@ use serde_json;
 use serde_yaml;
 use std::fs;
 
-use crate::internal::sylklabs;
+use crate::internal::sylklabs::core::{self, Config};
 
 use super::error::SchedulerError; // Import Serialize and Deserialize traits
 
@@ -11,11 +11,11 @@ use super::error::SchedulerError; // Import Serialize and Deserialize traits
 #[allow(non_camel_case_types)]
 pub enum NodeType {
     #[serde(rename = "SINGLE_PROCESS")]
-    SINGLE_PROCESS,
+    SingleProcess,
     #[serde(rename = "WORKER")]
-    WORKER,
+    Worker,
     #[serde(rename = "SCHEDULER")]
-    SCHEDULER,
+    Scheduler,
 }
 
 #[derive(Debug, Serialize, Deserialize)] // Use the derive macros for serialization and deserialization
@@ -80,7 +80,7 @@ fn deserialize_from_yaml(yaml: &str) -> Result<SerdeConfig, Box<dyn std::error::
 ///     }
 /// }
 /// ```
-pub fn config_load(path: String) -> Result<sylklabs::core::Config, SchedulerError> {
+pub fn config_load(path: String) -> Result<Config, SchedulerError> {
     // Load the content of your JSON or YAML file
     let content = fs::read_to_string(&path).map_err(|e| {
         SchedulerError::ConfigLoadError(format!("failed to load configurations: {:?}", e))
@@ -103,15 +103,18 @@ pub fn config_load(path: String) -> Result<sylklabs::core::Config, SchedulerErro
 
     // Now you have your configuration struct populated
     println!("{:?}", config);
-    let mut cfg: sylklabs::core::Config = sylklabs::core::Config::default();
-    cfg.grpc_port = config.grpc_port;
-    cfg.node_type = match config.node_type {
-        NodeType::SCHEDULER => sylklabs::core::NodeType::Scheduler.into(),
-        NodeType::WORKER => sylklabs::core::NodeType::Worker.into(),
-        _ => sylklabs::core::NodeType::SingleProcess.into(),
+    let mut cfg: Config = Config::default();
+    
+    cfg = Config {
+        grpc_port: config.grpc_port,
+        node_type: match config.node_type {
+            NodeType::Scheduler => core::NodeType::Scheduler.into(),
+            NodeType::Worker => core::NodeType::Worker.into(),
+            _ => core::NodeType::SingleProcess.into(),
+        },
+        num_workers: config.num_workers,
     };
 
-    cfg.num_workers = config.num_workers;
     Ok(cfg)
 }
 
@@ -140,7 +143,7 @@ mod tests {
             let serde_config = deserialize_from_yaml(&test_config.content)
                 .expect("Failed to deserialize test config");
 
-            assert_eq!(serde_config.node_type, NodeType::WORKER);
+            assert_eq!(serde_config.node_type, NodeType::Worker);
             assert_eq!(serde_config.num_workers, 4);
             assert_eq!(serde_config.grpc_port, 50051);
         }
@@ -154,7 +157,7 @@ mod tests {
             let serde_config = deserialize_from_json(&test_config.content)
                 .expect("Failed to deserialize test config");
 
-            assert_eq!(serde_config.node_type, NodeType::WORKER);
+            assert_eq!(serde_config.node_type, NodeType::Worker);
             assert_eq!(serde_config.num_workers, 4);
             assert_eq!(serde_config.grpc_port, 50051);
         }

@@ -8,10 +8,7 @@ use std::{
 };
 
 use crate::{
-    core::{
-        job::{Job, Thunk},
-        worker_pool::{self, WorkerPool},
-    },
+    core::worker_pool::{self, WorkerPool},
     internal::sylklabs::{
         core::Task,
         scheduler::v1::{
@@ -71,7 +68,8 @@ impl SchedulerWorkerService for SchedulerServer {
                         };
                         // Process the worker message and create a response
                         // let response = ;
-                        if let Err(_) = tx.send(Ok(response)).await {
+                        if tx.send(Ok(response)).await.is_err() {
+                            // TODO
                             // Handle error sending response
                         }
                     }
@@ -100,10 +98,9 @@ pub async fn start_grpc_server(
     port: i32,
     pool: worker_pool::WorkerPool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Channel for signaling shutdown
-    let (tx, mut rx) = mpsc::channel(1);
+
     // Channel for signaling gRPC server shutdown
-    // let (tx, mut rx) = tokio::sync::oneshot::channel();
+    let (tx, mut rx) = mpsc::channel(1);
 
     // Init the worker pool
     let cloned_pool = pool.clone();
@@ -144,14 +141,16 @@ pub async fn start_grpc_server(
                 interrupt_received.store(true, Ordering::Relaxed);
 
                 let pool = cloned_pool.clone();
+                
                 // Explicitly dropping worker pool to kick off cleanup
                 // Drop the pool in a new task
-                // tokio::spawn(async move {
-                // drop(pool);
+                // Note: we spawn here an `std` thread to overcome any blocking
+                // to tokio runtime (for force shutdown)
                 std::thread::spawn(move || {
+                    // If WorkerPool started with shutdown flag then it is handled on drop impl
                     drop(pool);
                 });
-                // });
+
                 // Send the signal to shutdown the server
                 tx.send(()).await.unwrap();
             }
@@ -203,9 +202,9 @@ impl SchedulerService for SchedulerAdminService {
 
         // Capture the 'o' value from the lock before the async block
         let o_clone = {
-            let executor = cloned_shared.executors.clone();
-            executor
+            cloned_shared.executors.clone()
         };
+
         // Execute the logic using the cloned shared data and the cloned request
         match cloned_shared.execute(
             move |args| {

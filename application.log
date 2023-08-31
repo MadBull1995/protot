@@ -15,48 +15,10 @@
 [INFO] [scheduler][8] worker starting
 [INFO] [scheduler][9] worker starting
 [INFO] [scheduler][0] worker executing job -> 0
-[INFO] [scheduler][1] worker executing job -> 1
-[DEBUG] executing task: task-1
-[INFO] [scheduler][2] worker executing job -> 2
-[INFO] [scheduler][3] worker executing job -> 3
-[INFO] [scheduler][4] worker executing job -> 4
-[INFO] [scheduler][5] worker executing job -> 5
-[INFO] [scheduler][7] worker executing job -> 6
-[INFO] [scheduler][6] worker executing job -> 7
-[INFO] [scheduler][8] worker executing job -> 8
-[INFO] [scheduler][9] worker executing job -> 9
-[INFO] [scheduler][0] worker executing job -> 10
-[INFO] [scheduler][1] worker executing job -> 11
-[DEBUG] executing task: task-2
-[INFO] [scheduler][2] worker executing job -> 12
-[DEBUG] executing task: task-1
 [DEBUG] server interrupted
-[INFO] [scheduler][3] worker executing job -> 13
-[DEBUG] executing task: task-2
-[INFO] [scheduler][4] worker executing job -> 14
-[DEBUG] executing task: task-1
-[DEBUG] executing task: task-2
-[INFO] [scheduler][5] worker executing job -> 15
-[INFO] [scheduler][7] worker executing job -> 16
-[DEBUG] executing task: task-2
-[INFO] [scheduler][7] worker executing job -> 17
-[DEBUG] executing task: task-1
-[DEBUG] executing task: task-1
-[INFO] [scheduler][7] worker executing job -> 18
-[DEBUG] executing task: task-2
-[INFO] [scheduler][9] worker executing job -> 19
-[INFO] [scheduler][0] worker executing job -> 20
-[DEBUG] executing task: task-2
-[DEBUG] executing task: task-2
-[DEBUG] executing task: task-1
-[DEBUG] executing task: task-2
-[DEBUG] executing task: task-1
-[DEBUG] executing task: task-1
-[DEBUG] executing task: task-2
-[DEBUG] executing task: task-2
-[DEBUG] executing task: task-1
-[DEBUG] executing task: task-1
-[WARN] Failed to update join_generation
-[DEBUG] [scheduler][0] disconnected; shutting down.
-[DEBUG] [scheduler][2] disconnected; shutting down.
+[DEBUG] [scheduler][1] disconnected; shutting down.
+[DEBUG] [scheduler][7] disconnected; shutting down.
 [DEBUG] [scheduler][3] disconnected; shutting down.
+[DEBUG] [scheduler][4] disconnected; shutting down.
+[DEBUG] [scheduler][5] disconnected; shutting down.
+[DEBUG] [scheduler][2] disconnected; shutting down.
