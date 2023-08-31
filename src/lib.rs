@@ -58,13 +58,12 @@ pub mod core;
 pub mod internal;
 mod server;
 mod utils;
-use crate::core::worker_pool::TaskExecutor;
-use std::{thread, time::Duration};
+use crate::core::worker_pool::{TaskExecutor, TaskRegistry};
+use std::{thread, time::Duration, default, sync::{Arc, Mutex}};
 
 use internal::sylklabs::{self, core::Task, scheduler::v1::ExecuteRequest};
 use protobuf::well_known_types::{any::Any, struct_};
 pub use utils::{configs::config_load, error::SchedulerError, logger};
-
 use crate::server::start_grpc_server;
 
 pub fn start() -> Result<(), SchedulerError> {
@@ -83,8 +82,13 @@ pub fn start() -> Result<(), SchedulerError> {
         Err(e) => panic!("errored: {:?}", e),
     };
 
+    let mut opts = ProcessOptions::default();
+    let mut executors = TaskRegistry::new();
+    executors.register_task("some_custom_task", TaskExecutorImpl1 {});
+    opts.task_executors = executors;
+
     match cfgs.node_type() {
-        sylklabs::core::NodeType::SingleProcess => init_single_process_scheduler(cfgs),
+        sylklabs::core::NodeType::SingleProcess => init_single_process_scheduler(cfgs, opts),
         // sylklabs::core::NodeType::Scheduler => {
         //     init_scheduler_server(cfgs)
         // },
@@ -102,6 +106,16 @@ pub fn start() -> Result<(), SchedulerError> {
 // fn init_scheduler_server() -> Result<(), SchedulerError> {
 //     Ok(())
 // }
+struct ProcessOptions {
+    process_name: String,
+    task_executors: TaskRegistry,
+}
+
+impl Default for ProcessOptions {
+    fn default() -> Self {
+        Self { process_name: "scheduler".to_string(), task_executors: TaskRegistry::new() }
+    }
+}
 
 struct TaskExecutorImpl1 {}
 
@@ -137,21 +151,40 @@ impl TaskExecutor for TaskExecutorImpl2 {
     }
 }
 
-fn init_single_process_scheduler(cfg: sylklabs::core::Config) -> Result<(), SchedulerError> {
+#[cfg(feature = "prom")]
+fn collect_stats() {
+    logger::log(logger::LogLevel::DEBUG, "collecting stats enabled");
+}
+
+#[cfg(not(feature = "prom"))]
+fn collect_stats() {
+    logger::log(logger::LogLevel::DEBUG, "collecting stats disabled");
+}
+
+fn init_single_process_scheduler(cfg: sylklabs::core::Config, opts: ProcessOptions) -> Result<(), SchedulerError> {
+    
+    let registry = opts.task_executors;
+
+    let executors = Arc::new(Mutex::new(registry));
+
     let pool = core::worker_pool::Builder::new()
-        .num_threads(cfg.num_workers as usize)
-        .thread_name("scheduler".to_string())
+        .num_workers(cfg.num_workers as usize)
+        .name(opts.process_name)
         .thread_stack_size(32 * 1024 * 1024)
+        .executors(executors)
         .build()?;
-    let _ = pool.execute(
-        |args| println!("started worker pool: {:#?}", args),
+    
+    collect_stats();
+
+    pool.execute(
+        |args| println!("sanity check: {:#?}", args),
         ExecuteRequest {
             task: Some(Task {
-                id: "some wiered task".to_string(),
+                id: "sanity-1".to_string(),
                 ..Default::default()
             }),
         },
-    );
+    ).expect("Oops. Something gone terribly wrong");
 
     {
         pool.executors

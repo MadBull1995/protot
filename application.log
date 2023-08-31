@@ -1,24 +1,2 @@
-[INFO] Scheduler starting
-[DEBUG] Loaded configurations Config {
-    node_type: SingleProcess,
-    num_workers: 10,
-    grpc_port: 44880,
-}
-[INFO] [scheduler][0] worker starting
-[INFO] [scheduler][1] worker starting
-[INFO] [scheduler][2] worker starting
-[INFO] [scheduler][3] worker starting
-[INFO] [scheduler][4] worker starting
-[INFO] [scheduler][5] worker starting
-[INFO] [scheduler][6] worker starting
-[INFO] [scheduler][7] worker starting
-[INFO] [scheduler][8] worker starting
-[INFO] [scheduler][9] worker starting
-[INFO] [scheduler][0] worker executing job -> 0
-[DEBUG] server interrupted
-[DEBUG] [scheduler][1] disconnected; shutting down.
-[DEBUG] [scheduler][7] disconnected; shutting down.
-[DEBUG] [scheduler][3] disconnected; shutting down.
-[DEBUG] [scheduler][4] disconnected; shutting down.
-[DEBUG] [scheduler][5] disconnected; shutting down.
-[DEBUG] [scheduler][2] disconnected; shutting down.
+[INFO] [Test][1] worker starting
+[DEBUG] [Test][1] disconnected; shutting down.

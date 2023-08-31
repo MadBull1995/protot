@@ -1,6 +1,6 @@
 use std::{
-    collections::HashMap,
     fmt,
+    collections::{HashMap, hash_map::Keys},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc::{channel, Receiver, Sender},
@@ -49,18 +49,11 @@ impl TaskRegistry {
             .insert(task_name.to_string(), Box::new(executor));
     }
 
-    // pub fn execute_task(
-    //     &self,
-    //     task_name: &str,
-    //     args: ExecuteRequest,
-    // ) -> Result<(), &'static str> {
-    //     if let Some(executor) = self.registry.get(task_name) {
-    //         executor.execute(args);
-    //         Ok(())
-    //     } else {
-    //         Err("Task not found")
-    //     }
-    // }
+    pub fn iter_tasks(
+        &self,
+    ) -> Keys<'_, String, Box<dyn TaskExecutor>> {
+        self.registry.keys()
+    }
 
     pub fn get_executor(
         &self,
@@ -116,70 +109,95 @@ impl<'a> Drop for Sentinel<'a> {
 
 #[derive(Clone, Default)]
 pub struct Builder {
-    num_threads: Option<usize>,
-    thread_name: Option<String>,
+    name: Option<String>,
+    num_workers: Option<usize>,
     thread_stack_size: Option<usize>,
     workers_type: WorkerType,
     force_shutdown: Option<bool>,
-    executers: Option<bool>,
+    executors: Option<Arc<Mutex<TaskRegistry>>>,
+}
+
+fn init_registry(executors: Option<Arc<Mutex<TaskRegistry>>>) -> Arc<Mutex<TaskRegistry>> {
+    let registry = match executors.is_none() {
+        true => {Arc::new(Mutex::new(TaskRegistry::new()))},
+        _ => {executors.unwrap()}
+    };
+    let cloned = registry.clone();
+    let binding = registry
+            .as_ref()
+            .lock()
+            .unwrap();
+
+    let tasks_iterator = binding.iter_tasks();
+    for task in tasks_iterator {
+        logger::log(logger::LogLevel::DEBUG, format!("registerd: {}", task).as_str());
+    }
+
+    cloned
 }
 
 impl Builder {
     pub fn new() -> Builder {
         Builder {
-            num_threads: None,
-            thread_name: None,
+            name: None,
+            num_workers: None,
             thread_stack_size: None,
             force_shutdown: None,
-            executers: None,
+            executors: None,
             ..Default::default()
         }
     }
 
+    /// If the scheduler system work with remote workers over gRPC
     pub fn grpc_workers(mut self) -> Builder {
         self.workers_type = WorkerType::Remote;
         self
     }
 
-    pub fn num_threads(mut self, num_threads: usize) -> Builder {
-        self.num_threads = Some(num_threads);
+    // Num of workers
+    pub fn num_workers(mut self, num_workers: usize) -> Builder {
+        self.num_workers = Some(num_workers);
         self
     }
 
-    pub fn thread_name(mut self, thread_name: String) -> Builder {
-        self.thread_name = Some(thread_name);
+    /// Custom thread name for main process
+    pub fn name(mut self, name: String) -> Builder {
+        self.name = Some(name);
         self
     }
 
+    /// The RUST_MIN_STACK environment variable can override the default stack size of 2 MB for created threads
     pub fn thread_stack_size(mut self, thread_stack_size: usize) -> Builder {
         self.thread_stack_size = Some(thread_stack_size);
         self
     }
 
+    /// Will force the scheduler server to shutdown even if there is still working tasks
     pub fn with_force_shutdown(mut self) -> Builder {
         self.force_shutdown = Some(true);
         self
     }
 
-    pub fn executors(mut self) -> Builder {
-        self.executers = Some(true);
+    pub fn executors(mut self, executors: Arc<Mutex<TaskRegistry>>) -> Builder {
+        self.executors = Some(executors);
         self
     }
 
     pub fn build(self) -> Result<WorkerPool, SchedulerError> {
-        let num_threads = self.num_threads.unwrap_or_else(num_cpus::get);
+        let num_workers = self.num_workers.unwrap_or_else(num_cpus::get);
         let force_shutdown = self.force_shutdown.unwrap_or_else(|| false);
         let (tx, rx) = channel::<Job<'static, ExecuteRequest>>();
 
         let shared_data = match self.workers_type {
             WorkerType::Local => {
-                initialize_thread_pool(num_threads, rx, force_shutdown, self.thread_name)
+                initialize_thread_pool(num_workers, rx, force_shutdown, self.name)
             }
             WorkerType::Remote => Err(SchedulerError::PoolCreationError(
                 "Cant serve gRPC based workers currently".to_string(),
             ))?,
-        };
-        let registry = Arc::new(Mutex::new(TaskRegistry::new()));
+        };  
+      
+        let registry = init_registry(self.executors);
 
         Ok(WorkerPool {
             jobs: Some(tx),
@@ -196,14 +214,17 @@ pub struct WorkerPool {
 }
 
 impl WorkerPool {
-    pub fn new(num_threads: usize) -> Result<WorkerPool, SchedulerError> {
-        Builder::new().num_threads(num_threads).build()
+
+    /// The most basic WorkerPool configuration
+    pub fn new(num_workers: usize) -> Result<WorkerPool, SchedulerError> {
+        Builder::new().num_workers(num_workers).build()
     }
 
-    pub fn with_name(name: String, num_threads: usize) -> Result<WorkerPool, SchedulerError> {
+    /// Add some name to main process
+    pub fn with_name(name: String, num_workers: usize) -> Result<WorkerPool, SchedulerError> {
         Builder::new()
-            .num_threads(num_threads)
-            .thread_name(name)
+            .num_workers(num_workers)
+            .name(name)
             .build()
     }
 
@@ -305,6 +326,7 @@ impl Clone for WorkerPool {
     ///
     /// ```rust,no_run
     /// use proto_tasker::core::worker_pool::WorkerPool;
+    /// use proto_tasker::internal::sylklabs::scheduler::v1::ExecuteRequest;
     /// use std::thread;
     /// use std::sync::mpsc::channel;
     ///
@@ -317,9 +339,9 @@ impl Clone for WorkerPool {
     ///             let (tx, rx) = channel();
     ///             for i in 1..12 {
     ///                 let tx = tx.clone();
-    ///                 pool.execute(move || {
+    ///                 pool.execute(move |args| {
     ///                     tx.send(i).expect("channel will be waiting");
-    ///                 });
+    ///                 }, ExecuteRequest {..Default::default()});
     ///             }
     ///             drop(tx);
     ///             if i == 0 {
