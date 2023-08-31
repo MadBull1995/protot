@@ -1,190 +1,98 @@
-# proto-tasker
+# Sylklabs Scheduler
 
-This project has been generated thanks to [```sylk.build```](https://www.sylk.build) !
+![Sylklabs Scheduler Logo](logo.png)
 
-This project is using gRPC as main code generator and utilize HTTP2 + protobuf protocols for communication.
+Sylklabs Scheduler is a distributed task scheduling application designed to efficiently distribute tasks across worker nodes.
 
-# Index
-Usage:
-- [Python](#python)
+## Table of Contents
+- [Main Components](#main-components)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Configuration](#configuration)
+- [Examples](#examples)
+- [Dependencies](#dependencies)
+- [License](#license)
+- [Contributing](#contributing)
+- [Contact](#contact)
 
-Resources:
-- [SchedulerService](#schedulerservice)
-- [SchedulerWorkerService](#schedulerworkerservice)
-- [core](#core)
-- [scheduler](#scheduler)
+### Main Components
+In a nutshell, the architecture centers around the `WorkerPool` struct, which manages a group of workers and task execution. The pool is constructed via a `Builder` struct, allowing customization like setting the number of workers. Task execution skills are encapsulated in the `TaskExecutor` trait, which must be implemented by any struct that wants to handle well you guessed it.. tasks.
 
-# Services
+ These tasks and their corresponding executors are organized by the `TaskRegistry` struct. For health monitoring of the worker pool, we have the `Sentinel` struct. Finally, `WorkerPoolSharedData` serves as a shared memory, keeping track of key metrics and providing synchronization tools.
 
-## SchedulerService
+#### General Flow
+1. A `TaskRegistry` is initialized to hold all task executors.
+2. A `WorkerPool` is created using `Builder`, with options to specify various configurations like the number of workers, force shutdown, etc.
+3. Tasks are registered in `TaskRegistry`.
+4. `WorkerPool` executes tasks based on the registered executors.
 
-__`Execute`__ [Unary]
-- Input: [sylklabs.scheduler.v1.ExecuteRequest](#executerequest)
-- Output: [sylklabs.scheduler.v1.ExecuteResponse](#executeresponse)
+## Installation
 
-__`Schedule`__ [Unary]
-- Input: [sylklabs.scheduler.v1.ScheduleRequest](#schedulerequest)
-- Output: [sylklabs.scheduler.v1.ScheduleResponse](#scheduleresponse)
+Clone this repository and navigate to the root folder. Build the scheduler using the following command:
 
-## SchedulerWorkerService
-
-__`Communicate`__ [Bidi stream]
-- Input: [sylklabs.scheduler.v1.WorkerMessage](#workermessage)
-- Output: [sylklabs.scheduler.v1.SchedulerMessage](#schedulermessage)
-
-# Packages
-
-## `sylklabs.core`
-
-
-<details id="#Task">
-<summary><b>Task</b></summary>
-
-### __Task__
-: 
-* __id__ [TYPE_STRING]
-
-
-* __payload__ [[Any](#Any)]
-
-</details>
-
-
-<details id="#Config">
-<summary><b>Config</b></summary>
-
-### __Config__
-: 
-* __node_type__ [[NodeType](#NodeType)]
-
-
-* __num_workers__ [TYPE_INT32]
-
-
-* __grpc_port__ [TYPE_INT32]
-
-</details>
-
-## `sylklabs.scheduler.v1`
-
-
-<details id="#ScheduleRequest">
-<summary><b>ScheduleRequest</b></summary>
-
-### __ScheduleRequest__
-: 
-* __task__ [[Task](#Task)]
-
-</details>
-
-
-<details id="#ScheduleResponse">
-<summary><b>ScheduleResponse</b></summary>
-
-### __ScheduleResponse__
-: 
-* __scheduled_task_id__ [TYPE_INT32]
-
-</details>
-
-
-<details id="#ExecuteResponse">
-<summary><b>ExecuteResponse</b></summary>
-
-### __ExecuteResponse__
-: 
-* __task_id__ [TYPE_INT32]
-
-
-* __state__ [[TaskState](#TaskState)]
-
-</details>
-
-
-<details id="#ExecuteRequest">
-<summary><b>ExecuteRequest</b></summary>
-
-### __ExecuteRequest__
-: 
-* __task__ [[Task](#Task)]
-
-</details>
-
-
-<details id="#RegistrationRequest">
-<summary><b>RegistrationRequest</b></summary>
-
-### __RegistrationRequest__
-: 
-* __worker_id__ [TYPE_STRING]
-
-
-* __supported_tasks__ [TYPE_STRING]
-
-</details>
-
-
-<details id="#AssignTaskRequest">
-<summary><b>AssignTaskRequest</b></summary>
-
-### __AssignTaskRequest__
-: 
-* __task__ [[Task](#Task)]
-
-</details>
-
-
-<details id="#WorkerMessage">
-<summary><b>WorkerMessage</b></summary>
-
-### __WorkerMessage__
-: 
-* __worker_message_type__ [TYPE_ONEOF]
-
-</details>
-
-
-<details id="#SchedulerMessage">
-<summary><b>SchedulerMessage</b></summary>
-
-### __SchedulerMessage__
-: 
-* __scheduler_message_type__ [TYPE_ONEOF]
-
-</details>
-
-
-# Usage
-
-This project supports clients communication in the following languages:
-
-### Python
-
-```py
-from clients.python import prototasker
-
-client = prototasker()
-
-# Unary call
-response = stub.<Unary>(<InMessage>())
-print(response)
-
-# Server stream
-responses = stub.<ServerStream>(<InMessage>())
-for res in responses:
-	print(res)
-
-# Client Stream
-requests = iter([<InMessage>(),<InMessage>()])
-response = client.<ClientStream>(requests)
-print(response)
-
-# Bidi Stream
-responses = client.<BidiStream>(requests)
-for res in responses:
-	print(res)
+```sh
+$ cargo build --release
 ```
 
+After building the scheduler, the executable will be available under `target/release/`.
+
+## Usage
+
+Run the scheduler by executing the binary. You can provide a configuration file as a command-line argument to customize the behavior of the scheduler.
+
+```sh
+$ ./scheduler --config=config.yaml
+```
+
+## Features
+
+- **Distributed Task Scheduling**: Efficiently distributes tasks across worker nodes.
+- **Configuration Loading**: Supports JSON and YAML configuration files for easy customization.
+- **Scalability**: Designed to scale and adapt to varying workloads and available resources.
+
+## Configuration
+
+The scheduler's behavior can be customized using a JSON or YAML configuration file. Please refer to our [documentation](#) for the expected format and available options.
+
+## Examples
+
+Here's a Rust code snippet showing a simple example:
+
+```rust,no_run
+use proto_tasker::config_load;
+
+// Initializing and running the scheduler.
+fn main() {
+    // Load configuration from command-line arguments or defaults.
+    let config = config_load(String::from("my_config.yaml"));
+
+    // Initialize the scheduler using the provided configuration.
+
+    // Start scheduling tasks.
+}
+```
+
+## Dependencies
+
+The following external crates are used by the Sylklabs Scheduler:
+
+- `sylklabs`: Core library for scheduler logic and data structures.
+- `serde`: For serialization and deserialization.
+- `clap`: For command-line argument parsing.
+
+## License
+
+This project is licensed under the terms of the Apache License, Version 2.0.
+
+## Contributing
+
+Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) for more information.
+
+## Contact
+
+For any questions or clarifications, feel free to reach out to us at `contact@sylk.build`.
 
 * * *
-__This project and README file has been created thanks to [sylk.build](https://www.sylk.build)__
+
+__This project and README file has been created thanks to [sylk.build](https://www.sylk.build)__ © 2023 Sylklabs Technologies
