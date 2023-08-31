@@ -17,9 +17,9 @@ Sylklabs Scheduler is a distributed task scheduling application designed to effi
 - [Contact](#contact)
 
 ### Main Components
-In a nutshell, the architecture centers around the `WorkerPool` struct, which manages a group of workers and task execution. The pool is constructed via a `Builder` struct, allowing customization like setting the number of workers. Task execution skills are encapsulated in the `TaskExecutor` trait, which must be implemented by any struct that wants to handle well you guessed it.. tasks.
+In a nutshell, the architecture centers around a `WorkerPool` that manages a set of task execution units, known as `Workers`. These workers can be of different types like `LocalWorker` and are __thread-safe__, __atomic__ units governed by the `Worker` trait. They operate in sync through `WorkerPoolSharedData`, which maintains shared state and metrics. Task execution capabilities are abstracted by the `TaskExecutor` trait and organized by a `TaskRegistry`. The pool's configuration is customizable via a `Builder` struct. Meanwhile, a `Sentinel` struct oversees the health of the workers in the pool. 
 
- These tasks and their corresponding executors are organized by the `TaskRegistry` struct. For health monitoring of the worker pool, we have the `Sentinel` struct. Finally, `WorkerPoolSharedData` serves as a shared memory, keeping track of key metrics and providing synchronization tools.
+This cohesive system efficiently __distributes__ tasks, maintains __synchronized__ state, and allows for __future extensibility__.
 
 #### General Flow
 1. A `TaskRegistry` is initialized to hold all task executors.
