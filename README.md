@@ -1,109 +1,121 @@
-# Sylklabs Scheduler
+# ProtoT: An Efficient Distributed Task Scheduling Engine Built in Rust
 
-![Sylklabs Scheduler Logo](logo.png)
+<!-- ![Sylklabs Logo](logo.png) -->
 
-Sylklabs Scheduler is a distributed task scheduling application designed to efficiently distribute tasks across worker nodes.
+Welcome to Sylklabs Task Scheduler, an innovative task scheduling engine engineered to intelligently allocate tasks across a distributed network of worker nodes.
+
+## Why?
+
+Developed to not only facilitate a deep understanding of Rust but also to offer a robust and extensible interface for task scheduling requirements. We leverage Protocol Buffers for efficient serialization, ensuring streamlined communication protocols between different components. Here, "T" stands for "Task", the core element of our scheduling logic.
 
 ## Table of Contents
-- [Main Components](#main-components)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Features](#features)
-- [Configuration](#configuration)
-- [Examples](#examples)
-- [Docker](#docker)
+- [Core Architecture](#core-architecture)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Usage](#usage)
+- [Key Features](#key-features)
+- [Customization](#customization)
+  - [Configuration](#configuration)
+  - [Examples](#examples)
+- [Docker Deployment](#docker-deployment)
 - [License](#license)
 - [Contributing](#contributing)
-- [Contact](#contact)
+- [Contact Information](#contact-information)
 
-### Main Components
-In a nutshell, the architecture centers around a `WorkerPool` that manages a set of task execution units, known as `Workers`. These workers can be of different types like `LocalWorker` and are __thread-safe__, __atomic__ units governed by the `Worker` trait. They operate in sync through `WorkerPoolSharedData`, which maintains shared state and metrics. Task execution capabilities are abstracted by the `TaskExecutor` trait and organized by a `TaskRegistry`. The pool's configuration is customizable via a `Builder` struct. Meanwhile, a `Sentinel` struct oversees the health of the workers in the pool. 
+## Core Architecture
 
-This cohesive system efficiently __distributes__ tasks, maintains __synchronized__ state, and allows for __future extensibility__.
+Our system is architected around a dynamic `WorkerPool`, responsible for managing an array of task execution units known as `Workers`. These workers, which come in various types such as `LocalWorker`, are designed to be **thread-safe**, **atomic**, and adhere to the `Worker` trait. 
 
-#### General Flow
-1. A `TaskRegistry` is initialized to hold all task executors.
-2. A `WorkerPool` is created using `Builder`, with options to specify various configurations like the number of workers, force shutdown, etc.
-3. Tasks are registered in `TaskRegistry`.
-4. `WorkerPool` executes tasks based on the registered executors.
+A shared data entity named `WorkerPoolSharedData` maintains state and metrics in a synchronized manner. Task management capabilities are abstracted by the `TaskExecutor` trait and are arranged via a `TaskRegistry`. 
 
-## Installation
+Configurability is a first-class citizen in our architecture; all system parameters can be set using a `Builder` struct. Additionally, a `Sentinel` structure keeps a vigilant eye on the health metrics of each worker in the pool. 
 
-Clone this repository and navigate to the root folder. Build the scheduler using the following command:
+Our system architecture aims for:
+- **Efficient Distribution** of tasks
+- **Synchronized State Management**
+- **High Extensibility** for future functionalities
+
+### Workflow Overview
+1. Initialize a `TaskRegistry` to accommodate all task executors.
+2. Construct a `WorkerPool` via `Builder`, specifying configurations like the number of workers, force shutdown settings, etc.
+3. Register the tasks within the `TaskRegistry`.
+4. The `WorkerPool` begins task execution based on the executors registered.
+
+## Getting Started
+
+### Installation
+
+Clone the repository and navigate to the project root. Use the following commands to build the scheduler:
 
 ```sh
 $ cargo build --release
-# Build with stats collection
+# To enable stats collection
 $ cargo build --release --features "stats"
 ```
 
-After building the scheduler, the executable will be available under `target/release/`.
+Upon successful build, the executable can be found under `target/release/`.
 
-## Usage
+### Usage
 
-Run the scheduler by executing the binary. You can provide a configuration file as a command-line argument to customize the behavior of the scheduler.
+Execute the scheduler using the binary. For advanced settings, a configuration file can be supplied as a command-line argument.
 
 ```sh
 $ ./proto_tasker --config=config.yaml
 ```
 
-## Features
+## Key Features
 
-- **Distributed Task Scheduling**: Efficiently distributes tasks across worker nodes.
-- **Configuration Loading**: Supports JSON and YAML configuration files for easy customization.
-- **Scalability**: Designed to scale and adapt to varying workloads and available resources.
+- **Distributed Task Scheduling**: Optimized to allocate tasks across multiple worker nodes.
+- **Flexible Configuration**: Supports both JSON and YAML configuration files.
+- **Scalability**: Engineered to adapt to various workloads and resource availability.
 
-## Configuration
+## Customization
 
-The scheduler's behavior can be customized using a JSON or YAML configuration file. Please refer to our [documentation](#) for the expected format and available options.
+### Configuration
 
-## Examples
+Tweak the behavior of the scheduler using either a JSON or YAML configuration file. Refer to our [comprehensive documentation](#) for format details and options.
 
-Here's a Rust code snippet showing a simple example:
+### Examples
+
+Here’s a quick Rust code snippet to illustrate basic usage:
 
 ```rust,no_run
 use proto_tasker::config_load;
 
-// Initializing and running the scheduler.
 fn main() {
-    // Load configuration from command-line arguments or defaults.
     let config = config_load(String::from("my_config.yaml"));
-
-    // Initialize the scheduler using the provided configuration.
-
-    // Start scheduling tasks.
+    // Further initialization and task scheduling logic here.
 }
 ```
 
+## Docker Deployment
 
-## Docker
-
-Run the docker'ed version:
+Run the Dockerized version of our scheduler:
 
 ```bash
 docker compose up --build -d
 ```
 
 Components:
-- `proto_tasker_app`: Scheduler service main process
-- `grafana`: Visualizing metrics for scheduler
-- `prom`: Collect and expose the internal metrics collected by `src/server/metrics.rs` module
+- `proto_tasker_app`: Main process of the scheduler service
+- `grafana`: For metrics visualization
+- `prom`: Metrics collection and exposure
 
-See `Dockerfile` and `docker-compose.yml` for more details.
-
+Consult the `Dockerfile` and `docker-compose.yml` for additional information.
 
 ## License
 
-This project is licensed under the terms of the Apache License, Version 2.0.
+This project is licensed under the Apache License, Version 2.0.
 
 ## Contributing
 
-Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) for more information.
+We appreciate community contributions. Kindly refer to our [Contributing Guidelines](CONTRIBUTING.md) for further details.
 
-## Contact
+## Contact Information
 
-For any questions or clarifications, feel free to reach out to us at `contact@sylk.build`.
+For any queries or clarifications, please don’t hesitate to contact us at `contact@sylk.build`.
 
-* * *
+---
 
-__This project and README file has been created thanks to [sylk.build](https://www.sylk.build)__ © 2023 Sylklabs Technologies
+**This project and documentation are brought to you by [sylk.build](https://www.sylk.build)**  
+© 2023 Sylklabs Technologies. All rights reserved.
