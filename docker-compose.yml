@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  proto_tasker_app:
+    image: proto_tasker
+    networks:
+      - proto_tasker_net
+    ports:
+      - "44880:44880"
+      - "9091:9091"
+
+  prom:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    networks:
+      - proto_tasker_net
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./data/prometheus:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    restart: unless-stopped
+    networks:
+      - proto_tasker_net
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+
+networks:
+  proto_tasker_net:
+    driver: bridge

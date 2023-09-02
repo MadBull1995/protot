@@ -11,7 +11,7 @@ Sylklabs Scheduler is a distributed task scheduling application designed to effi
 - [Features](#features)
 - [Configuration](#configuration)
 - [Examples](#examples)
-- [Dependencies](#dependencies)
+- [Docker](#docker)
 - [License](#license)
 - [Contributing](#contributing)
 - [Contact](#contact)
@@ -33,6 +33,8 @@ Clone this repository and navigate to the root folder. Build the scheduler using
 
 ```sh
 $ cargo build --release
+# Build with stats collection
+$ cargo build --release --features "stats"
 ```
 
 After building the scheduler, the executable will be available under `target/release/`.
@@ -42,7 +44,7 @@ After building the scheduler, the executable will be available under `target/rel
 Run the scheduler by executing the binary. You can provide a configuration file as a command-line argument to customize the behavior of the scheduler.
 
 ```sh
-$ ./scheduler --config=config.yaml
+$ ./proto_tasker --config=config.yaml
 ```
 
 ## Features
@@ -73,13 +75,22 @@ fn main() {
 }
 ```
 
-## Dependencies
 
-The following external crates are used by the Sylklabs Scheduler:
+## Docker
 
-- `sylklabs`: Core library for scheduler logic and data structures.
-- `serde`: For serialization and deserialization.
-- `clap`: For command-line argument parsing.
+Run the docker'ed version:
+
+```bash
+docker compose up --build -d
+```
+
+Components:
+- `proto_tasker_app`: Scheduler service main process
+- `grafana`: Visualizing metrics for scheduler
+- `prom`: Collect and expose the internal metrics collected by `src/server/metrics.rs` module
+
+See `Dockerfile` and `docker-compose.yml` for more details.
+
 
 ## License
 

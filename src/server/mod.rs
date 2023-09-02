@@ -1,3 +1,5 @@
+pub mod metrics;
+
 use std::{
     pin::Pin,
     process,
@@ -99,6 +101,17 @@ pub async fn start_grpc_server(
     pool: worker_pool::WorkerPool,
 ) -> Result<(), Box<dyn std::error::Error>> {
 
+    #[cfg(feature = "stats")]
+    {
+        // Spawn a new task for the metrics server
+        tokio::spawn(async {
+            if let Err(e) = metrics::start_metrics_server().await {
+                // Handle the error as appropriate for your application
+                eprintln!("Metrics server failed: {:?}", e);
+            }
+        });
+    }
+
     // Channel for signaling gRPC server shutdown
     let (tx, mut rx) = mpsc::channel(1);
 
@@ -109,7 +122,7 @@ pub async fn start_grpc_server(
     });
 
     // gRPC server setup
-    let addr = format!("127.0.0.1:{}", port).as_str().parse()?;
+    let addr = format!("0.0.0.0:{}", port).as_str().parse()?;
 
     // SchedulerWorkerService - for communication of workers to scheduler
     let scheduler_worker_svc = SchedulerServer {};
@@ -164,7 +177,8 @@ pub async fn start_grpc_server(
             // Wait for the signal to start the shutdown
             rx.recv().await;
         });
-
+    
+    logger::log(logger::LogLevel::DEBUG, "gRPC server started");
     server.await?;
 
     Ok(())
@@ -179,12 +193,6 @@ impl SchedulerAdminService {
         Self { shared_data }
     }
 }
-
-// impl TaskArguments for ExecuteRequest {
-//     fn get_data(&self) -> &dyn TaskArguments {
-
-//     }
-// }
 
 #[tonic::async_trait]
 impl SchedulerService for SchedulerAdminService {
@@ -214,8 +222,6 @@ impl SchedulerService for SchedulerAdminService {
                     format!("executing task: {}", task_name).as_str(),
                 );
                 logic.get_executor(&task_name).unwrap().execute(args);
-                // logic.execute(args)
-                // .get_executor(&task_name).expect("Executor not found in registry").execute(args)
             },
             req,
         ) {
@@ -234,6 +240,7 @@ impl SchedulerService for SchedulerAdminService {
                     )
                     .add_help_link("documentation", "https://protot.io/docs/help")
                     .set_localized_message("en-US", "error executing task");
+                
                 // Generate error status
                 let status = Status::with_error_details(
                     tonic::Code::FailedPrecondition,
@@ -253,14 +260,7 @@ impl SchedulerService for SchedulerAdminService {
         request: Request<ScheduleRequest>,
     ) -> Result<Response<ScheduleResponse>, Status> {
         let shared_data = self.shared_data.clone();
-        // let worker_pool = shared_data.worker_pool.lock().await;
-        // worker_pool.execute(|args| println!("excute from grpc server"), ExecuteRequest { task: Some(Task { ..Default::default() }) });
-        // logger::log(
-        //     logger::LogLevel::DEBUG,
-        //     format!("got schedule request : {}", worker_pool.max_count()).as_str(),
-        // );
         let mut err_details = ErrorDetails::new();
-        // err_details.bad_request("name", "name cannot be empty");
         err_details
             .add_precondition_failure_violation(
                 "unimplemented",

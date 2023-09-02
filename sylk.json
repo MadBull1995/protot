@@ -246,6 +246,7 @@
                 {
                     "name": "RegistrationRequest",
                     "fullName": "sylklabs.scheduler.v1.RegistrationRequest",
+                    "description": "Message for worker node registration",
                     "fields": [
                         {
                             "name": "worker_id",
@@ -264,6 +265,15 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 2
+                        },
+                        {
+                            "name": "magic_cookie",
+                            "fullName": "sylklabs.scheduler.v1.RegistrationRequest.magic_cookie",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 3
                         }
                     ],
                     "type": "descriptor",
@@ -320,6 +330,7 @@
                 {
                     "name": "SchedulerMessage",
                     "fullName": "sylklabs.scheduler.v1.SchedulerMessage",
+                    "description": "Scheduler source messages can be one of the following types",
                     "fields": [
                         {
                             "name": "scheduler_message_type",
@@ -391,7 +402,8 @@
                             "clientStreaming": true,
                             "serverStreaming": true,
                             "type": "descriptor",
-                            "kind": "method"
+                            "kind": "method",
+                            "description": "The Communicate RPC method sets up a bidirectional stream between\nthe scheduler and a worker node."
                         }
                     ],
                     "type": "service",

@@ -1,0 +1,6 @@
+scrape_configs:
+- job_name: proto_tasker
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - proto_tasker_app:9091

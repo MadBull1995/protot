@@ -51,7 +51,7 @@ class SchedulerService_v1:
 	def __init__(self,channel: grpc.ChannelCredentials = None, client_opt = {}):
 		logging.root.setLevel(client_opt.get('log_level','ERROR'))
 		if channel is None:
-			self.channel = grpc.insecure_channel('localhost:{}'.format(client_opt.get('port',44880)),_CHANNEL_OPTIONS)
+			self.channel = grpc.insecure_channel('[::]:44880'.format(client_opt.get('port',44880)),_CHANNEL_OPTIONS)
 			try:
 				grpc.channel_ready_future(self.channel).result(timeout=client_opt.get('timeout',10))
 			except grpc.FutureTimeoutError:

@@ -60,32 +60,34 @@ mod server;
 mod utils;
 use crate::core::worker_pool::{TaskExecutor, TaskRegistry};
 use std::{thread, time::Duration, default, sync::{Arc, Mutex}};
+pub use lazy_static::lazy_static;
 
-use internal::sylklabs::{self, core::Task, scheduler::v1::ExecuteRequest};
+use internal::sylklabs::{self, core::{Task, Config}, scheduler::v1::ExecuteRequest};
 use protobuf::well_known_types::{any::Any, struct_};
 pub use utils::{configs::config_load, error::SchedulerError, logger};
 use crate::server::start_grpc_server;
 
-pub fn start() -> Result<(), SchedulerError> {
+pub fn start(registry: TaskRegistry, configurations: Option<Config>) -> Result<(), SchedulerError> {
     logger::init(true);
     logger::log(logger::LogLevel::INFO, "Scheduler starting");
 
     // Loading configurations to `sylklabs.core.Config` message from yaml/json/toml
-    let cfgs = match config_load("configs.yaml".to_string()) {
-        Ok(cfg) => {
-            logger::log(
-                logger::LogLevel::DEBUG,
-                format!("Loaded configurations {:#?}", cfg).as_str(),
-            );
-            cfg
+    let cfgs = match configurations {
+        Some(cfgs) => {cfgs}
+        None => match config_load("configs.yaml".to_string()) {
+            Ok(cfg) => {
+                logger::log(
+                    logger::LogLevel::DEBUG,
+                    format!("Loaded configurations {:#?}", cfg).as_str(),
+                );
+                cfg
+            }
+            Err(e) => panic!("errored: {:?}", e),
         }
-        Err(e) => panic!("errored: {:?}", e),
     };
 
     let mut opts = ProcessOptions::default();
-    let mut executors = TaskRegistry::new();
-    executors.register_task("some_custom_task", TaskExecutorImpl1 {});
-    opts.task_executors = executors;
+    opts.task_executors = registry;
 
     match cfgs.node_type() {
         sylklabs::core::NodeType::SingleProcess => init_single_process_scheduler(cfgs, opts),
@@ -117,7 +119,7 @@ impl Default for ProcessOptions {
     }
 }
 
-struct TaskExecutorImpl1 {}
+pub struct TaskExecutorImpl1 {}
 
 impl TaskExecutor for TaskExecutorImpl1 {
     fn execute(&self, args: ExecuteRequest) {
@@ -134,7 +136,7 @@ impl TaskExecutor for TaskExecutorImpl1 {
     }
 }
 
-struct TaskExecutorImpl2 {}
+pub struct TaskExecutorImpl2 {}
 
 impl TaskExecutor for TaskExecutorImpl2 {
     fn execute(&self, args: ExecuteRequest) {
@@ -151,14 +153,14 @@ impl TaskExecutor for TaskExecutorImpl2 {
     }
 }
 
-#[cfg(feature = "prom")]
+#[cfg(feature = "stats")]
 fn collect_stats() {
     logger::log(logger::LogLevel::DEBUG, "collecting stats enabled");
 }
 
-#[cfg(not(feature = "prom"))]
+#[cfg(not(feature = "stats"))]
 fn collect_stats() {
-    logger::log(logger::LogLevel::DEBUG, "collecting stats disabled");
+    logger::log(logger::LogLevel::DEBUG, "collecting stats disabled, to enable use feature flag: \"prometheus\"");
 }
 
 fn init_single_process_scheduler(cfg: sylklabs::core::Config, opts: ProcessOptions) -> Result<(), SchedulerError> {
@@ -186,16 +188,16 @@ fn init_single_process_scheduler(cfg: sylklabs::core::Config, opts: ProcessOptio
         },
     ).expect("Oops. Something gone terribly wrong");
 
-    {
-        pool.executors
-            .lock()
-            .unwrap()
-            .register_task("task-1", TaskExecutorImpl1 {});
-        pool.executors
-            .lock()
-            .unwrap()
-            .register_task("task-2", TaskExecutorImpl2 {});
-    }
+    // {
+    //     pool.executors
+    //         .lock()
+    //         .unwrap()
+    //         .register_task("task-1", TaskExecutorImpl1 {});
+    //     pool.executors
+    //         .lock()
+    //         .unwrap()
+    //         .register_task("task-2", TaskExecutorImpl2 {});
+    // }
 
     // Todo start scheduler server
     match start_grpc_server(cfg.grpc_port, pool) {
