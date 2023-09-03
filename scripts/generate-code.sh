@@ -1,0 +1,1 @@
+# TODO: add script for generating code (with sylk build CLI if existing, fallback to `protoc`)
