@@ -21,6 +21,7 @@ Developed to not only facilitate a deep understanding of Rust but also to offer 
   - [Configuration](#configuration)
   - [Examples](#examples)
 - [Docker Deployment](#docker-deployment)
+- [Protobuf Development](#protobuf-development)
 - [License](#license)
 - [Contributing](#contributing)
 - [Contact Information](#contact-information)
@@ -105,6 +106,13 @@ Components:
 - `prom`: Metrics collection and exposure
 
 Consult the `Dockerfile` and `docker-compose.yml` for additional information.
+
+## Protobuf Development
+
+ProtoT uses protocol buffers as main protocol for communicating with data across different components in the core library.
+All the protobuf files we use and compile in `ProtoT` are located under `/protos` directory.
+
+We use `Sylk Build CLI` to unify the way we structure our protobuf schema, for more details see [`protos/README.md`](/protos/README.md)
 
 ## License
 
