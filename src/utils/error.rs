@@ -9,7 +9,7 @@
 /// # Examples
 ///
 /// ```rust,no_run
-/// use proto_tasker::SchedulerError; // Replace with actual import
+/// use protot::SchedulerError; // Replace with actual import
 ///
 /// let error = SchedulerError::ConfigLoadError("File not found".to_string());
 /// match error {

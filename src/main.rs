@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-use proto_tasker::{start, SchedulerError, core::worker_pool::TaskRegistry, TaskExecutorImpl1, TaskExecutorImpl2};
+use protot::{start, SchedulerError, core::worker_pool::TaskRegistry, TaskExecutorImpl1, TaskExecutorImpl2};
 
 fn main() -> Result<(), SchedulerError> {
     

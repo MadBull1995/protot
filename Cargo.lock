@@ -773,31 +773,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proto_tasker"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "env_logger",
- "futures",
- "hyper",
- "lazy_static",
- "log",
- "num_cpus",
- "prometheus",
- "prost",
- "prost-types",
- "protobuf 3.2.0",
- "serde",
- "serde_json",
- "serde_yaml",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-build",
- "tonic-types",
-]
-
-[[package]]
 name = "protobuf"
 version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -821,6 +796,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5d4d7b8601c814cfb36bcebb79f0e61e45e1e93640cf778837833bbed05c372"
 dependencies = [
  "thiserror",
+]
+
+[[package]]
+name = "protot"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "env_logger",
+ "futures",
+ "hyper",
+ "lazy_static",
+ "log",
+ "num_cpus",
+ "prometheus",
+ "prost",
+ "prost-types",
+ "protobuf 3.2.0",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tonic-types",
 ]
 
 [[package]]

@@ -1,5 +1,8 @@
 # ProtoT: An Efficient Distributed Task Scheduling Engine Built in Rust
 
+> **Note**
+> Work In Progress
+
 <!-- ![Sylklabs Logo](logo.png) -->
 
 Welcome to Sylklabs Task Scheduler, an innovative task scheduling engine engineered to intelligently allocate tasks across a distributed network of worker nodes.
@@ -60,7 +63,7 @@ Upon successful build, the executable can be found under `target/release/`.
 Execute the scheduler using the binary. For advanced settings, a configuration file can be supplied as a command-line argument.
 
 ```sh
-$ ./proto_tasker --config=config.yaml
+$ ./protot --config=config.yaml
 ```
 
 ## Key Features

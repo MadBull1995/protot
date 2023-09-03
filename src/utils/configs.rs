@@ -68,7 +68,7 @@ fn deserialize_from_yaml(yaml: &str) -> Result<SerdeConfig, Box<dyn std::error::
 /// # Examples
 ///
 /// ```rust,no_run
-/// use proto_tasker::{config_load, SchedulerError};
+/// use protot::{config_load, SchedulerError};
 ///
 /// let config = config_load("config.yaml".to_string());
 /// match config {

@@ -1,57 +1,68 @@
-//! # Sylklabs Scheduler
+//! # ProtoT - Task Scheduler: A Distributed Task Scheduling System
 //!
-//! `main.rs` is the entry point for the Sylklabs Scheduler, a distributed task scheduling application.
-//! This file initializes the scheduler, manages configuration loading, and starts the execution of tasks.
+//! `ProtoT` is a sophisticated distributed task scheduling library built with Rust, designed to manage and distribute tasks effectively across various worker nodes.
 //!
-//! ## Usage
-//!
-//! Run the scheduler by executing the binary. You can provide a configuration file as a command-line argument
-//! to customize the behavior of the scheduler.
-//!
-//! ```sh
-//! $ ./scheduler --config=config.yaml
-//! ```
+//! This crate uses Protocol Buffers for efficient serialization and is built to be both thread-safe and highly extensible.
 //!
 //! ## Features
 //!
-//! - Distributed Task Scheduling: Efficiently distributes tasks across worker nodes.
-//! - Configuration Loading: Loads configuration from JSON or YAML files for easy customization.
-//! - Scalability: Scales to accommodate varying workloads and available resources.
+//! - **Distributed Task Scheduling**: Utilizes a balanced and efficient algorithm to distribute tasks across worker nodes.
+//! - **Thread Safety**: Ensures safe concurrent execution of tasks across multiple threads.
+//! - **Protocol Buffers**: Uses Protocol Buffers for efficient serialization and message passing.
+//! - **Scalability**: Built with scalability in mind, allowing for easy addition of more nodes or tasks.
+//! - **Configurable**: Allows users to specify custom configurations through JSON or YAML files.
 //!
-//! ## Configuration
+//! ## Architecture
 //!
-//! The scheduler's behavior can be configured using a JSON or YAML configuration file. Refer to the documentation
-//! for the expected format and available options.
+//! The architecture revolves around the concept of a `WorkerPool`, which is responsible for managing worker threads known as `Workers`. These workers are thread-safe, atomic units that can execute tasks.
+//!
+//! Shared state and metrics between workers are maintained by `WorkerPoolSharedData`. Task execution capabilities are abstracted by the `TaskExecutor` trait and organized within a `TaskRegistry`.
+//!
+//! For health monitoring, a `Sentinel` struct is responsible for overseeing the entire system.
+//!
+//! ## Installation and Usage
+//!
+//! You can include it in your project by adding `protot` to your `Cargo.toml` dependencies.
+//!
+//! ```toml
+//! [dependencies]
+//! protot = "0.1.0"
+//! ```
+//!
+//! Detailed installation and usage instructions are available in the `README.md` file.
 //!
 //! ## Examples
 //!
-//! ```rust,no_run
-//! use proto_tasker::config_load;
-//! // Initializing and running the scheduler.
+//! Here's a quick example that demonstrates basic usage:
+//!
+//! ```rust
+//! use protot::config_load;
+//!
 //! fn main() {
-//!     // Load configuration from command-line arguments or defaults.
 //!     let config = config_load(String::from("my_config.yaml"));
-//!
-//!     // Initialize the scheduler using the provided configuration.
-//!
-//!     // Start scheduling tasks.
+//!     // Further code to initialize and run the scheduler
 //! }
 //! ```
 //!
-//! ## Dependencies
-//!
-//! The following external crates are used by the Sylklabs Scheduler:
-//!
-//! - `sylklabs`: Core library for scheduler logic and data structures.
-//! - `serde`: Serialization and deserialization.
-//! - `clap`: Command-line argument parsing.
+//! For more examples and configuration options, please refer to the `examples/` directory in the repository.
 //!
 //! ## License
 //!
 //! This project is licensed under the terms of the Apache License, Version 2.0.
 //!
+//! ## Contributions
+//!
+//! Contributions are very welcome! Please read our [contributing guidelines](CONTRIBUTING.md) for details on the process for submitting pull requests to us.
+//!
+//! ## Contact Information
+//!
+//! For any questions or clarifications, feel free to reach out at `contact@sylk.build`.
+//!
 //! ---
-//! © 2023 Sylklabs Technologies
+//!
+//! This crate and its documentation are brought to you by [sylk.build](https://www.sylk.build), © 2023 Sylk Technologies.
+//!
+
 
 mod client;
 pub mod core;

@@ -348,8 +348,8 @@ impl Clone for WorkerPool {
     /// We could for example submit jobs from multiple threads concurrently.
     ///
     /// ```rust,no_run
-    /// use proto_tasker::core::worker_pool::WorkerPool;
-    /// use proto_tasker::internal::sylklabs::scheduler::v1::ExecuteRequest;
+    /// use protot::core::worker_pool::WorkerPool;
+    /// use protot::internal::sylklabs::scheduler::v1::ExecuteRequest;
     /// use std::thread;
     /// use std::sync::mpsc::channel;
     ///

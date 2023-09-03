@@ -1,0 +1,10 @@
+/Users/amitshmulevitch/proto-tasker/examples/target/debug/deps/async_stream-3ba553e3785e080e.rmeta: /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/lib.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/async_stream.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/next.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/yielder.rs
+
+/Users/amitshmulevitch/proto-tasker/examples/target/debug/deps/libasync_stream-3ba553e3785e080e.rlib: /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/lib.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/async_stream.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/next.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/yielder.rs
+
+/Users/amitshmulevitch/proto-tasker/examples/target/debug/deps/async_stream-3ba553e3785e080e.d: /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/lib.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/async_stream.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/next.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/yielder.rs
+
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/lib.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/async_stream.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/next.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/async-stream-0.2.1/src/yielder.rs:

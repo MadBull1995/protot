@@ -1,0 +1,11 @@
+/Users/amitshmulevitch/proto-tasker/examples/target/debug/deps/matchit-d9cb7eebacfcf892.rmeta: /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/lib.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/error.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/params.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/router.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/tree.rs
+
+/Users/amitshmulevitch/proto-tasker/examples/target/debug/deps/libmatchit-d9cb7eebacfcf892.rlib: /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/lib.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/error.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/params.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/router.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/tree.rs
+
+/Users/amitshmulevitch/proto-tasker/examples/target/debug/deps/matchit-d9cb7eebacfcf892.d: /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/lib.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/error.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/params.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/router.rs /Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/tree.rs
+
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/lib.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/error.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/params.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/router.rs:
+/Users/amitshmulevitch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/matchit-0.7.2/src/tree.rs:
