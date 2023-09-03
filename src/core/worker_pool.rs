@@ -1,6 +1,6 @@
 use std::{
+    collections::{hash_map::Keys, HashMap},
     fmt,
-    collections::{HashMap, hash_map::Keys},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc::{channel, Receiver, Sender},
@@ -15,10 +15,13 @@ use super::{
 };
 
 // Lib modules
+#[allow(unused_imports)]
 use crate::{internal::sylklabs::scheduler::v1::ExecuteRequest, logger, SchedulerError};
 
 #[cfg(feature = "stats")]
-use crate::server::metrics::{self, increment_task, set_worker_pool_metric, WorkerPoolMetricType, WorkerPoolTaskType};
+use crate::server::metrics::{
+    self, increment_task, set_worker_pool_metric, WorkerPoolMetricType, WorkerPoolTaskType,
+};
 
 // Trait for task execution
 pub trait TaskExecutor: Send + Sync + 'static {
@@ -37,7 +40,6 @@ impl Default for TaskRegistry {
 }
 
 impl TaskRegistry {
-
     pub fn new() -> Self {
         TaskRegistry {
             registry: HashMap::new(),
@@ -52,9 +54,7 @@ impl TaskRegistry {
             .insert(task_name.to_string(), Box::new(executor));
     }
 
-    pub fn iter_tasks(
-        &self,
-    ) -> Keys<'_, String, Box<dyn TaskExecutor>> {
+    pub fn iter_tasks(&self) -> Keys<'_, String, Box<dyn TaskExecutor>> {
         self.registry.keys()
     }
 
@@ -74,13 +74,13 @@ impl TaskRegistry {
 }
 
 pub struct Sentinel<'a> {
-    worker_id: usize, 
+    worker_id: usize,
     shared_data: &'a Arc<WorkerPoolSharedData>,
     active: bool,
 }
 
 impl<'a> Sentinel<'a> {
-    pub fn new(worker_id: usize,shared_data: &'a Arc<WorkerPoolSharedData>) -> Sentinel<'a> {
+    pub fn new(worker_id: usize, shared_data: &'a Arc<WorkerPoolSharedData>) -> Sentinel<'a> {
         Sentinel {
             shared_data,
             worker_id,
@@ -100,7 +100,10 @@ impl<'a> Drop for Sentinel<'a> {
             self.shared_data.active_count.fetch_sub(1, Ordering::SeqCst);
             #[cfg(feature = "stats")]
             {
-                metrics::set_worker_pool_metric(metrics::WorkerPoolMetricType::Active,self.shared_data.active_count.load(Ordering::SeqCst));
+                metrics::set_worker_pool_metric(
+                    metrics::WorkerPoolMetricType::Active,
+                    self.shared_data.active_count.load(Ordering::SeqCst),
+                );
             }
             if thread::panicking() {
                 self.shared_data.panic_count.fetch_add(1, Ordering::SeqCst);
@@ -110,11 +113,8 @@ impl<'a> Drop for Sentinel<'a> {
                 }
             }
             self.shared_data.no_work_notify_all();
-            logger::log(
-                logger::LogLevel::ERROR,
-                "sentinel droped, spawnning a new worker",
-            );
-            spawn_in_pool(self.worker_id.clone(), self.shared_data.clone());
+            log::error!("sentinel droped, spawnning a new worker",);
+            spawn_in_pool(self.worker_id, self.shared_data.clone());
         }
     }
 }
@@ -131,18 +131,15 @@ pub struct Builder {
 
 fn init_registry(executors: Option<Arc<Mutex<TaskRegistry>>>) -> Arc<Mutex<TaskRegistry>> {
     let registry = match executors.is_none() {
-        true => {Arc::new(Mutex::new(TaskRegistry::new()))},
-        _ => {executors.unwrap()}
+        true => Arc::new(Mutex::new(TaskRegistry::new())),
+        _ => executors.unwrap(),
     };
     let cloned = registry.clone();
-    let binding = registry
-            .as_ref()
-            .lock()
-            .unwrap();
+    let binding = registry.as_ref().lock().unwrap();
 
     let tasks_iterator = binding.iter_tasks();
     for task in tasks_iterator {
-        logger::log(logger::LogLevel::DEBUG, format!("registerd: {}", task).as_str());
+        log::debug!("registerd: {}", task);
     }
 
     cloned
@@ -197,13 +194,11 @@ impl Builder {
 
     pub fn build(self) -> Result<WorkerPool, SchedulerError> {
         let num_workers = self.num_workers.unwrap_or_else(num_cpus::get);
-        let force_shutdown = self.force_shutdown.unwrap_or_else(|| false);
+        let force_shutdown = self.force_shutdown.unwrap_or(false);
         let (tx, rx) = channel::<Job<'static, ExecuteRequest>>();
 
         let (shared_data, workers) = match self.workers_type {
-            WorkerType::Local => {
-                initialize_thread_pool(num_workers, rx, force_shutdown, self.name)
-            }
+            WorkerType::Local => initialize_thread_pool(num_workers, rx, force_shutdown, self.name),
             WorkerType::Remote => Err(SchedulerError::PoolCreationError(
                 "Cant serve gRPC based workers currently".to_string(),
             ))?,
@@ -212,15 +207,18 @@ impl Builder {
         #[cfg(feature = "stats")]
         {
             // Increment the counter
-            metrics::set_worker_pool_metric(metrics::WorkerPoolMetricType::TotalWorkers, num_workers);
+            metrics::set_worker_pool_metric(
+                metrics::WorkerPoolMetricType::TotalWorkers,
+                num_workers,
+            );
         }
-      
+
         let registry = init_registry(self.executors);
         Ok(WorkerPool {
             jobs: Some(tx),
             shared_data,
             executors: registry,
-            workers
+            workers,
         })
     }
 }
@@ -233,7 +231,6 @@ pub struct WorkerPool {
 }
 
 impl WorkerPool {
-
     /// The most basic WorkerPool configuration
     pub fn new(num_workers: usize) -> Result<WorkerPool, SchedulerError> {
         Builder::new().num_workers(num_workers).build()
@@ -241,10 +238,7 @@ impl WorkerPool {
 
     /// Add some name to main process
     pub fn with_name(name: String, num_workers: usize) -> Result<WorkerPool, SchedulerError> {
-        Builder::new()
-            .num_workers(num_workers)
-            .name(name)
-            .build()
+        Builder::new().num_workers(num_workers).name(name).build()
     }
 
     pub fn execute<F>(&self, job: F, args: ExecuteRequest) -> Result<(), SchedulerError>
@@ -254,13 +248,13 @@ impl WorkerPool {
         let job_count = self.shared_data.job_counter.fetch_add(1, Ordering::SeqCst);
         self.shared_data.queued_count.fetch_add(1, Ordering::SeqCst);
         let mut task = match args.clone().task {
-            Some(t) => { t },
-            None => Err(SchedulerError::TaskExecutionError("task execution must include valid data".to_string()))?
+            Some(t) => t,
+            None => Err(SchedulerError::TaskExecutionError(
+                "task execution must include valid data".to_string(),
+            ))?,
         };
         task.id = job_count.to_string();
-        let request = ExecuteRequest {
-            task: Some(task)
-        };
+        let request = ExecuteRequest { task: Some(task) };
 
         #[cfg(feature = "stats")]
         increment_task(WorkerPoolTaskType::Queued);
@@ -276,7 +270,9 @@ impl WorkerPool {
                 })
                 .expect("WorkerPool::execute unable to send job into queue.");
         } else {
-            Err(SchedulerError::TaskExecutionError("Couldn't excute the job as the WorkerPool is not initalized properly".to_string()))?
+            Err(SchedulerError::TaskExecutionError(
+                "Couldn't excute the job as the WorkerPool is not initalized properly".to_string(),
+            ))?
         }
 
         Ok(())
@@ -300,7 +296,7 @@ impl WorkerPool {
 
     pub fn join(&self) {
         // fast path requires no mutex
-        if self.shared_data.has_work() == false {
+        if !self.shared_data.has_work() {
             return;
         }
 
@@ -311,24 +307,26 @@ impl WorkerPool {
             && self.shared_data.has_work()
         {
             if self.shared_data.force_shutdown.load(Ordering::SeqCst) {
-                logger::log(
-                    logger::LogLevel::DEBUG,
-                    "Force shutdown activated, exiting join",
-                );
+                log::debug!("Force shutdown activated, exiting join",);
                 return;
             }
             lock = self.shared_data.empty_condvar.wait(lock).unwrap();
         }
 
         // increase generation if we are the first thread to come out of the loop
-        if self.shared_data.join_generation.compare_exchange(
-            generation,
-            generation.wrapping_add(1),
-            Ordering::SeqCst,
-            Ordering::SeqCst,
-        ).is_err() {
+        if self
+            .shared_data
+            .join_generation
+            .compare_exchange(
+                generation,
+                generation.wrapping_add(1),
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            )
+            .is_err()
+        {
             // Log the failure or take other actions.
-            logger::log(logger::LogLevel::WARN, "Failed to update join_generation");
+            log::warn!("Failed to update join_generation");
         }
     }
 }
@@ -426,7 +424,7 @@ pub struct WorkerPoolSharedData {
 }
 
 impl WorkerPoolSharedData {
-    pub fn new_partial(
+    pub fn new(
         num_threads: usize,
         thread_stack_size: Option<usize>,
         receiver: Receiver<Job<'static, ExecuteRequest>>,
@@ -435,7 +433,6 @@ impl WorkerPoolSharedData {
     ) -> Arc<Self> {
         Arc::new(Self {
             name: pool_name,
-            // workers: Vec::new(), // empty for now
             job_receiver: Arc::new(Mutex::new(receiver)),
             empty_condvar: Condvar::new(),
             empty_trigger: Mutex::new(()),
@@ -485,14 +482,17 @@ impl WorkerPoolSharedData {
         self.active_count.fetch_sub(1, Ordering::SeqCst);
         #[cfg(feature = "stats")]
         {
-            metrics::set_worker_pool_metric(WorkerPoolMetricType::Active,self.active_count.load(Ordering::SeqCst));
+            metrics::set_worker_pool_metric(
+                WorkerPoolMetricType::Active,
+                self.active_count.load(Ordering::SeqCst),
+            );
         }
     }
 
     pub fn process_new_excution_metrics(&self) {
         self.active_count.fetch_add(1, Ordering::SeqCst);
         self.queued_count.fetch_sub(1, Ordering::SeqCst);
-        
+
         #[cfg(feature = "stats")]
         {
             let active_workers = self.active_count.load(Ordering::Acquire);
@@ -509,27 +509,15 @@ pub fn initialize_thread_pool(
     pool_name: Option<String>,
 ) -> (Arc<WorkerPoolSharedData>, Vec<Arc<dyn Worker>>) {
     let shared_data =
-        WorkerPoolSharedData::new_partial(num_threads, None, receiver, force_shutdown, pool_name);
-    let mut shared_data_clone = Arc::clone(&shared_data);
+        WorkerPoolSharedData::new(num_threads, None, receiver, force_shutdown, pool_name);
+    let shared_data_clone = Arc::clone(&shared_data);
 
     let mut workers = Vec::new();
     for id in 0..num_threads {
         let worker =
             Arc::new(LocalWorker::new(id, Arc::clone(&shared_data_clone))) as Arc<dyn Worker>;
         worker.spawn();
-
         workers.push(worker);
-        // shared_data.add_worker(worker);
-    }
-
-    // println!("workers #: {}",workers.len());
-
-    // Safely populate the `workers` field
-    if let Some(data) = Arc::get_mut(&mut shared_data_clone) {
-        // data.populate_workers(workers);
-        println!("TODO add worker to list");
-    } else {
-        println!("not populated workers vec on worker pool");
     }
 
     (shared_data, workers)
@@ -537,10 +525,7 @@ pub fn initialize_thread_pool(
 
 fn spawn_in_pool(worker_id: usize, shared_data: Arc<WorkerPoolSharedData>) {
     let binding = Arc::clone(&shared_data);
-    let worker =
-        Arc::new(LocalWorker::new(
-            worker_id,
-            Arc::clone(&binding))) as Arc<dyn Worker>;
-        
+    let worker = Arc::new(LocalWorker::new(worker_id, Arc::clone(&binding))) as Arc<dyn Worker>;
+
     worker.spawn();
 }

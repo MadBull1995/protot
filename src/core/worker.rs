@@ -1,12 +1,15 @@
+#[allow(unused_imports)]
+use crate::{logger, server::metrics};
+#[allow(unused_imports)]
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicUsize},
-        Arc, mpsc::RecvTimeoutError,
+        mpsc::RecvTimeoutError,
+        Arc,
     },
-    thread, time::{Instant, Duration},
+    thread,
+    time::{Duration, Instant},
 };
-
-use crate::{logger, server::metrics};
 
 use super::worker_pool::{Sentinel, WorkerPoolSharedData};
 
@@ -39,6 +42,131 @@ pub trait Worker: Send + Sync {
     fn spawn(&self);
 }
 
+#[cfg(not(feature = "stats"))]
+#[allow(unused_variables, unused_mut)]
+fn process_task(
+    binding: Arc<WorkerPoolSharedData>,
+    sentinel: Sentinel<'_>,
+    mut total_time: Duration,
+    mut active_time: Duration,
+    worker_id: usize,
+) {
+    loop {
+        // Shutdown this thread if the pool has become smaller.
+        let (thread_counter_val, max_thread_count_val) = binding.load_thread_metrics();
+        if thread_counter_val >= max_thread_count_val {
+            break;
+        }
+
+        // Job retrieval logic would go here, possibly involving more shared state.
+        let message_result = {
+            // Only lock jobs for the time it takes
+            // to get a job, not run it.
+            let lock = binding
+                .job_receiver
+                .lock()
+                .expect("Worker thread unable to lock job_receiver");
+
+            lock.recv()
+        };
+
+        let job = match message_result {
+            Err(e) => {
+                println!("disconnecting: {:?}", thread::current().name().unwrap());
+                break;
+            }
+            Ok(j) => j,
+        };
+
+        binding.process_new_excution_metrics();
+
+        log::info!("worker executing job -> {}", job.get_id());
+
+        job.execute_job();
+
+        binding.decrement_thread_active();
+
+        // Notify condition variable, or any other logic for signaling that work is done.
+        binding.no_work_notify_all();
+    }
+    sentinel.cancel();
+}
+
+#[cfg(feature = "stats")]
+fn process_task(
+    binding: Arc<WorkerPoolSharedData>,
+    sentinel: Sentinel<'_>,
+    mut total_time: Duration,
+    mut active_time: Duration,
+    worker_id: usize,
+) {
+    loop {
+        // Shutdown this thread if the pool has become smaller.
+        let (thread_counter_val, max_thread_count_val) = binding.load_thread_metrics();
+        if thread_counter_val >= max_thread_count_val {
+            break;
+        }
+        let timeout = Duration::from_millis(1); // 20 ms timeout, adjust as needed
+
+        // Record the loop start time
+        let loop_start_time = Instant::now();
+
+        // Job retrieval logic would go here, possibly involving more shared state.
+        let message_result = {
+            // Only lock jobs for the time it takes
+            // to get a job, not run it.
+            let lock = binding
+                .job_receiver
+                .lock()
+                .expect("Worker thread unable to lock job_receiver");
+
+            lock.recv_timeout(timeout)
+        };
+
+        match message_result {
+            Ok(job) => {
+                // Process the job message
+                binding.process_new_excution_metrics();
+                let task_start_time = Instant::now();
+
+                log::info!("worker executing job -> {}", job.get_id());
+
+                metrics::decrement_task_queue();
+
+                // Execute the job and update counters.
+                job.execute_job();
+
+                let task_duration = task_start_time.elapsed();
+                active_time += task_duration;
+
+                metrics::increment_task(metrics::WorkerPoolTaskType::Executed);
+
+                binding.decrement_thread_active();
+
+                // Notify condition variable, or any other logic for signaling that work is done.
+                binding.no_work_notify_all();
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                // Update idle time metric here
+                let idle_duration = loop_start_time.elapsed();
+                total_time += idle_duration;
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                // The ThreadPool was dropped.
+                println!("disconnecting: {:?}.", thread::current().name().unwrap());
+                break;
+            }
+        }
+
+        let loop_duration = loop_start_time.elapsed();
+        total_time += loop_duration;
+
+        metrics::update_worker_utilization(worker_id, active_time, total_time);
+    }
+    sentinel.cancel();
+}
+
+#[allow(dead_code)]
 pub struct LocalWorker {
     id: usize,
     is_active: AtomicBool,
@@ -79,6 +207,7 @@ impl Worker for LocalWorker {
     /// # Panics
     ///
     /// This function will panic if the spawned thread panics.
+    #[allow(unused_mut)]
     fn spawn(&self) {
         let shared_data_clone = self.shared_data.clone();
         let mut builder = thread::Builder::new();
@@ -92,114 +221,23 @@ impl Worker for LocalWorker {
         }
 
         let worker_id = self.id;
-        let pool_name = shared_data_clone
-            .get_name()
-            .unwrap_or_else(|| "".to_string());
 
-        logger::log(
-            logger::LogLevel::INFO,
-            format!("[{}][{}] worker starting", pool_name, worker_id).as_str(),
-        );
-        
         builder
             .spawn(move || {
+                log::info!("worker starting",);
+                {}
                 let mut total_time = Duration::new(0, 0);
                 let mut active_time = Duration::new(0, 0);
-                
                 // Will spawn a new thread on panic unless it is canceled.
                 let binding = shared_data_clone.clone();
                 let sentinel = Sentinel::new(worker_id, &binding);
-                loop {
-                    // Shutdown this thread if the pool has become smaller.
-                    let (thread_counter_val, max_thread_count_val) = binding.load_thread_metrics();
-                    if thread_counter_val >= max_thread_count_val {
-                        break;
-                    }
-                    let timeout = Duration::from_millis(1); // 20 ms timeout, adjust as needed
-
-                    // Record the loop start time
-                    let loop_start_time = Instant::now();
-
-                    // Job retrieval logic would go here, possibly involving more shared state.
-                    let message_result = {
-                        // Only lock jobs for the time it takes
-                        // to get a job, not run it.
-                        let lock = binding
-                            .job_receiver
-                            .lock()
-                            .expect("Worker thread unable to lock job_receiver");
-                        
-                        lock.recv_timeout(timeout)
-                    };
-
-                    match message_result {
-                        Ok(job) => {
-                            // Process the job message
-                            binding.process_new_excution_metrics();
-                            let task_start_time = Instant::now();
-
-                            logger::log(
-                                logger::LogLevel::INFO,
-                                format!(
-                                    "[{}][{}] worker executing job -> {}",
-                                    pool_name,
-                                    worker_id,
-                                    job.get_id()
-                                )
-                                .as_str(),
-                            );
-        
-                            #[cfg(feature = "stats")]
-                            {
-                                metrics::decrement_task_queue();
-                            }
-        
-                            // Execute the job and update counters.
-                            job.execute_job();
-                    
-                            let task_duration = task_start_time.elapsed();
-                            active_time += task_duration;
-        
-                            #[cfg(feature = "stats")]
-                            {
-                                metrics::increment_task(metrics::WorkerPoolTaskType::Executed);
-                            }
-        
-                            binding.decrement_thread_active();
-                        
-                            // Notify condition variable, or any other logic for signaling that work is done.
-                            binding.no_work_notify_all();
-                            
-                        },
-                        Err(RecvTimeoutError::Timeout) => {
-                            // Update idle time metric here
-                            let idle_duration = loop_start_time.elapsed();
-                            total_time += idle_duration;
-                        },
-                        Err(RecvTimeoutError::Disconnected) => {
-                            // The ThreadPool was dropped.
-                            logger::log(
-                                logger::LogLevel::DEBUG,
-                                format!(
-                                    "[{}][{}] disconnected; shutting down.",
-                                    pool_name, worker_id
-                                )
-                                .as_str(),
-                            );
-                            break;
-                        }
-                    }
-
-                    let loop_duration = loop_start_time.elapsed();
-                    total_time += loop_duration;
-
-                    #[cfg(feature = "stats")]
-                    {
-                        metrics::update_worker_utilization(worker_id, active_time, total_time);
-                    }
-                    
-                }
-                sentinel.cancel(); // Cancel the sentinel.
+                process_task(
+                    binding.clone(),
+                    sentinel,
+                    total_time,
+                    active_time,
+                    worker_id,
+                );
             })
             .unwrap();
     }
@@ -219,8 +257,8 @@ mod tests {
         let (_, rx) = channel::<Job<'static, ExecuteRequest>>();
 
         // Create mock shared data instance
-        let shared_data =
-            WorkerPoolSharedData::new_partial(1, None, rx, false, Some(String::from("Test")));
+        let shared_data: Arc<WorkerPoolSharedData> =
+            WorkerPoolSharedData::new(1, None, rx, false, Some(String::from("Test")));
         let mut shared_data_clone = Arc::clone(&shared_data);
 
         // Create the worker
@@ -232,15 +270,10 @@ mod tests {
         worker.spawn();
         workers.push(worker);
 
-        // Safely populate the `workers` field
-        // if let Some(data) = Arc::get_mut(&mut shared_data_clone) {
-        //     data.populate_workers(workers);
-        // }
         // Sleep briefly to allow worker thread to execute the job
         thread::sleep(std::time::Duration::from_millis(100));
 
         // Assertions
         assert_eq!(shared_data.has_work(), false);
-        // ...
     }
 }

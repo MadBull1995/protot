@@ -36,7 +36,6 @@
 //! Here's a quick example that demonstrates basic usage:
 //!
 //! ```rust
-//! use protot::config_load;
 //!
 //! fn main() {
 //!     let config = config_load(String::from("my_config.yaml"));
@@ -63,42 +62,49 @@
 //! This crate and its documentation are brought to you by [sylk.build](https://www.sylk.build), © 2023 Sylk Technologies.
 //!
 
-
 mod client;
 pub mod core;
 pub mod internal;
 mod server;
 mod utils;
 use crate::core::worker_pool::{TaskExecutor, TaskRegistry};
-use std::{thread, time::Duration, default, sync::{Arc, Mutex}};
 pub use lazy_static::lazy_static;
 
-use internal::sylklabs::{self, core::{Task, Config}, scheduler::v1::ExecuteRequest};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
+
+use crate::server::start_grpc_server;
+use internal::sylklabs::{
+    self,
+    core::{Config, Task},
+    scheduler::v1::ExecuteRequest,
+};
 use protobuf::well_known_types::{any::Any, struct_};
 pub use utils::{configs::config_load, error::SchedulerError, logger};
-use crate::server::start_grpc_server;
 
 pub fn start(registry: TaskRegistry, configurations: Option<Config>) -> Result<(), SchedulerError> {
-    logger::init(true);
-    logger::log(logger::LogLevel::INFO, "Scheduler starting");
+    let _ = logger::init();
+    log::info!("Scheduler starting");
 
     // Loading configurations to `sylklabs.core.Config` message from yaml/json/toml
     let cfgs = match configurations {
-        Some(cfgs) => {cfgs}
+        Some(cfgs) => cfgs,
         None => match config_load("configs.yaml".to_string()) {
             Ok(cfg) => {
-                logger::log(
-                    logger::LogLevel::DEBUG,
-                    format!("Loaded configurations {:#?}", cfg).as_str(),
-                );
+                log::debug!("Loaded configurations: {:?}", cfg,);
                 cfg
             }
             Err(e) => panic!("errored: {:?}", e),
-        }
+        },
     };
 
-    let mut opts = ProcessOptions::default();
-    opts.task_executors = registry;
+    let opts = ProcessOptions { 
+        task_executors: registry,
+        ..Default::default()
+    };
 
     match cfgs.node_type() {
         sylklabs::core::NodeType::SingleProcess => init_single_process_scheduler(cfgs, opts),
@@ -126,7 +132,10 @@ struct ProcessOptions {
 
 impl Default for ProcessOptions {
     fn default() -> Self {
-        Self { process_name: "scheduler".to_string(), task_executors: TaskRegistry::new() }
+        Self {
+            process_name: "scheduler".to_string(),
+            task_executors: TaskRegistry::new(),
+        }
     }
 }
 
@@ -160,22 +169,24 @@ impl TaskExecutor for TaskExecutorImpl2 {
 
         let data = Any::unpack::<struct_::Struct>(&data);
         thread::sleep(Duration::from_secs(1));
-        println!("task excution 2 with dynamic args! {}",task_id);
+        println!("task excution 2 with dynamic args! {}", task_id);
     }
 }
 
 #[cfg(feature = "stats")]
 fn collect_stats() {
-    logger::log(logger::LogLevel::DEBUG, "collecting stats enabled");
+    log::debug!("collecting stats enabled");
 }
 
 #[cfg(not(feature = "stats"))]
 fn collect_stats() {
-    logger::log(logger::LogLevel::DEBUG, "collecting stats disabled, to enable use feature flag: \"prometheus\"");
+    log::debug!("collecting stats disabled, to enable use feature flag: \"stats\"");
 }
 
-fn init_single_process_scheduler(cfg: sylklabs::core::Config, opts: ProcessOptions) -> Result<(), SchedulerError> {
-    
+fn init_single_process_scheduler(
+    cfg: sylklabs::core::Config,
+    opts: ProcessOptions,
+) -> Result<(), SchedulerError> {
     let registry = opts.task_executors;
 
     let executors = Arc::new(Mutex::new(registry));
@@ -186,18 +197,18 @@ fn init_single_process_scheduler(cfg: sylklabs::core::Config, opts: ProcessOptio
         .thread_stack_size(32 * 1024 * 1024)
         .executors(executors)
         .build()?;
-    
+
     collect_stats();
 
-    pool.execute(
-        |args| println!("sanity check: {:#?}", args),
-        ExecuteRequest {
-            task: Some(Task {
-                id: "sanity-1".to_string(),
-                ..Default::default()
-            }),
-        },
-    ).expect("Oops. Something gone terribly wrong");
+    // pool.execute(
+    //     |args| println!("sanity check: {:#?}", args),
+    //     ExecuteRequest {
+    //         task: Some(Task {
+    //             id: "sanity-1".to_string(),
+    //             ..Default::default()
+    //         }),
+    //     },
+    // ).expect("Oops. Something gone terribly wrong");
 
     // {
     //     pool.executors

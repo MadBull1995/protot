@@ -40,6 +40,7 @@ pub enum SchedulerError {
     SchedulerUnimplemented(String),
 
     SchedulerServiceError(String),
+    LoggerSetupError(String),
 }
 
 /// Implementation of the `std::fmt::Display` trait for `SchedulerError`.
@@ -56,7 +57,9 @@ impl std::fmt::Display for SchedulerError {
             SchedulerError::SchedulerServiceError(msg) => {
                 write!(f, "Scheduler service error: {}", msg)
             }
-            // _ => write!(f, "Unknown internal scheduler error"),
+            SchedulerError::LoggerSetupError(msg) => {
+                write!(f, "Scheduler logger error: {}", msg)
+            } // _ => write!(f, "Unknown internal scheduler error"),
         }
     }
 }

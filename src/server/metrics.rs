@@ -1,15 +1,15 @@
 #[cfg(feature = "stats")]
+use hyper::service::{make_service_fn, service_fn};
+#[cfg(feature = "stats")]
+use hyper::{Body, Request as HyperRequest, Response as HyperResponse, Server as HyperServer};
+#[cfg(feature = "stats")]
 use lazy_static::lazy_static;
 #[cfg(feature = "stats")]
-use hyper::{Server as HyperServer, Body, Response as HyperResponse, Request as HyperRequest};
-#[cfg(feature = "stats")]
-use hyper::service::{make_service_fn, service_fn};
+use prometheus::{CounterVec, Encoder, GaugeVec, IntCounterVec, IntGaugeVec, Opts, Registry};
 #[cfg(feature = "stats")]
 use std::convert::Infallible;
 #[cfg(feature = "stats")]
-use prometheus::{Encoder, IntCounterVec, CounterVec, IntGaugeVec, Opts, Registry, GaugeVec};
-#[cfg(feature = "stats")]
-use std::time::{Duration};
+use std::time::Duration;
 // Enum for metric types
 #[cfg(feature = "stats")]
 pub enum WorkerPoolMetricType {
@@ -38,12 +38,11 @@ lazy_static! {
         &["type"]
     )
     .unwrap();
-
     static ref WORKER_UTILIZATION: GaugeVec = GaugeVec::new(
         Opts::new("worker_utilization", "Worker utilization"),
         &["worker_id"]
-    ).unwrap();
-
+    )
+    .unwrap();
 }
 
 #[cfg(feature = "stats")]
@@ -52,7 +51,9 @@ fn register_metrics() {
         Box::new(WORKER_POOL_METRICS.clone()),
         Box::new(WORKER_POOL_TASKS.clone()),
     ] {
-        REGISTRY.register(metric).expect("Failed to register metric");
+        REGISTRY
+            .register(metric)
+            .expect("Failed to register metric");
     }
 
     // Custom registration for WORKER_UTILIZATION
@@ -67,7 +68,7 @@ pub async fn start_metrics_server() -> Result<(), Box<dyn std::error::Error>> {
     async fn metrics(_req: HyperRequest<Body>) -> Result<HyperResponse<Body>, Infallible> {
         println!("metrics scrape");
         let encoder = prometheus::TextEncoder::new();
-        let metric_families = REGISTRY.gather();  // Use custom registry
+        let metric_families = REGISTRY.gather(); // Use custom registry
         let mut buffer = vec![];
         encoder.encode(&metric_families, &mut buffer).unwrap();
         let output = String::from_utf8(buffer.clone()).unwrap();
@@ -108,7 +109,9 @@ pub fn set_worker_pool_metric(metric_type: WorkerPoolMetricType, value: usize) {
         WorkerPoolMetricType::TotalWorkers => "total_workers",
         WorkerPoolMetricType::Active => "active",
     };
-    WORKER_POOL_METRICS.with_label_values(&[label]).set(value as i64);
+    WORKER_POOL_METRICS
+        .with_label_values(&[label])
+        .set(value as i64);
 }
 
 #[cfg(feature = "stats")]
@@ -118,5 +121,7 @@ pub fn update_worker_utilization(worker_id: usize, active_time: Duration, total_
     } else {
         0.0
     };
-    WORKER_UTILIZATION.with_label_values(&[&worker_id.to_string()]).set(utilization);
+    WORKER_UTILIZATION
+        .with_label_values(&[&worker_id.to_string()])
+        .set(utilization);
 }

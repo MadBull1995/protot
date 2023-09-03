@@ -1,51 +1,44 @@
-// logger.rs
+use log::LevelFilter;
+use log4rs::append::{console::ConsoleAppender, file::FileAppender};
+use log4rs::config::{Appender, Config, Root};
+use log4rs::encode::pattern::PatternEncoder;
 
-use std::fs;
-use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::path::Path;
-use std::sync::Mutex;
+use crate::SchedulerError;
 
-lazy_static::lazy_static! {
-    static ref FILE: Mutex<std::fs::File> = {
-        let path = "application.log";
-        if Path::new(path).exists() {
-            fs::remove_file(path).expect("Failed to remove old log file");
-        }
-        let file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(path)
-            .unwrap();
-        Mutex::new(file)
-    };
-}
+pub fn init() -> Result<(), SchedulerError> {
+    let encoder = PatternEncoder::new("[{d(%Y%m%d %H:%M:%S%.3f)}][{h({l})}][{T}]{t}:{L} - {m}\n");
+    let console_encoder = encoder.clone();
 
-#[derive(Debug)]
-pub enum LogLevel {
-    ERROR,
-    WARN,
-    INFO,
-    DEBUG,
-}
+    let logfile = FileAppender::builder()
+        .encoder(Box::new(encoder))
+        .build("log/output.log")
+        .map_err(|e| {
+            SchedulerError::LoggerSetupError(format!("Error building file for log4rs: {:?}", e))
+        })?;
 
-static mut PRINT_TO_CONSOLE: bool = false;
+    let console = ConsoleAppender::builder()
+        .encoder(Box::new(console_encoder))
+        .build();
 
-pub fn init(print_to_console: bool) {
-    unsafe {
-        PRINT_TO_CONSOLE = print_to_console;
-    }
-}
+    let config = Config::builder()
+        .appender(Appender::builder().build("console", Box::new(console)))
+        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .build(
+            Root::builder()
+                .appender("logfile")
+                .appender("console")
+                .build(LevelFilter::Debug),
+        )
+        .map_err(|e| {
+            SchedulerError::LoggerSetupError(format!(
+                "Error while building logger configs for log4rs: {:?}",
+                e
+            ))
+        })?;
 
-pub fn log(level: LogLevel, msg: &str) {
-    let mut file = FILE.lock().unwrap();
-    let log_str = format!("[{:?}] {}", level, msg);
-    writeln!(file, "{}", log_str).expect("Could not write to log file");
+    log4rs::init_config(config).map_err(|e| {
+        SchedulerError::LoggerSetupError(format!("Error init config for log4rs: {:?}", e))
+    })?;
 
-    unsafe {
-        if PRINT_TO_CONSOLE {
-            println!("{}", log_str);
-        }
-    }
+    Ok(())
 }

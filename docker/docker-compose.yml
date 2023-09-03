@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   proto_tasker_app:
-    image: proto_tasker
+    image: protot
     networks:
       - proto_tasker_net
     ports:
@@ -17,7 +17,7 @@ services:
     networks:
       - proto_tasker_net
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./data/prometheus:/prometheus
 
   grafana:

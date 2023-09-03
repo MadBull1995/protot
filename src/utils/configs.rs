@@ -103,9 +103,8 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
 
     // Now you have your configuration struct populated
     println!("{:?}", config);
-    let mut cfg: Config = Config::default();
-    
-    cfg = Config {
+
+    let cfg = Config {
         grpc_port: config.grpc_port,
         node_type: match config.node_type {
             NodeType::Scheduler => core::NodeType::Scheduler.into(),

@@ -7,7 +7,7 @@ edition = "2021"
 
 [features]
 default = []
-stats = ["hyper","prometheus"]
+stats = ["hyper", "prometheus"]
 
 [dependencies]
 async-stream = "0.2"
@@ -28,9 +28,8 @@ tokio-stream = "0.1"
 tonic-types = "0.9.2"
 prometheus = { version = "0.13.0", optional = true }
 hyper = {version = "0.14.27", optional = true}
-
-
-
+log4rs = "1.2.0"
+chrono = "0.4.28"
 
 [build-dependencies]
 tonic-build = {version = "0.9", features = ["prost"] }

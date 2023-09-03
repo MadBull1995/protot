@@ -9,6 +9,7 @@ use std::{
     },
 };
 
+#[allow(unused_imports)]
 use crate::{
     core::worker_pool::{self, WorkerPool},
     internal::sylklabs::{
@@ -100,7 +101,6 @@ pub async fn start_grpc_server(
     port: i32,
     pool: worker_pool::WorkerPool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-
     #[cfg(feature = "stats")]
     {
         // Spawn a new task for the metrics server
@@ -142,19 +142,16 @@ pub async fn start_grpc_server(
             stream.recv().await;
             if interrupt_received.load(Ordering::Relaxed) {
                 // Second Ctrl+C received, forcibly terminate
-                logger::log(
-                    logger::LogLevel::DEBUG,
-                    "second interrupt received, force quitting...",
-                );
+                log::debug!("second interrupt received, force quitting...",);
                 process::exit(1);
             } else {
                 // First Ctrl+C received, initiate graceful shutdown
-                logger::log(logger::LogLevel::DEBUG, "server interrupted");
+                log::debug!("server interrupted");
 
                 interrupt_received.store(true, Ordering::Relaxed);
 
                 let pool = cloned_pool.clone();
-                
+
                 // Explicitly dropping worker pool to kick off cleanup
                 // Drop the pool in a new task
                 // Note: we spawn here an `std` thread to overcome any blocking
@@ -177,8 +174,8 @@ pub async fn start_grpc_server(
             // Wait for the signal to start the shutdown
             rx.recv().await;
         });
-    
-    logger::log(logger::LogLevel::DEBUG, "gRPC server started");
+
+    log::debug!("gRPC server started");
     server.await?;
 
     Ok(())
@@ -209,27 +206,20 @@ impl SchedulerService for SchedulerAdminService {
         let cloned_shared = shared_data.worker_pool.as_ref().lock().await;
 
         // Capture the 'o' value from the lock before the async block
-        let o_clone = {
-            cloned_shared.executors.clone()
-        };
+        let o_clone = { cloned_shared.executors.clone() };
 
         // Execute the logic using the cloned shared data and the cloned request
         match cloned_shared.execute(
             move |args| {
                 let logic = o_clone.lock().unwrap();
-                logger::log(
-                    logger::LogLevel::DEBUG,
-                    format!("executing task: {}", task_name).as_str(),
-                );
+                log::debug!("executing task: {}", task_name,);
                 logic.get_executor(&task_name).unwrap().execute(args);
             },
             req,
         ) {
-            Ok(res) => {
-                Ok(Response::new(ExecuteResponse {
-                    ..Default::default()
-                }))
-            }
+            Ok(res) => Ok(Response::new(ExecuteResponse {
+                ..Default::default()
+            })),
             Err(err) => {
                 let mut err_details = ErrorDetails::new();
                 err_details
@@ -240,7 +230,7 @@ impl SchedulerService for SchedulerAdminService {
                     )
                     .add_help_link("documentation", "https://protot.io/docs/help")
                     .set_localized_message("en-US", "error executing task");
-                
+
                 // Generate error status
                 let status = Status::with_error_details(
                     tonic::Code::FailedPrecondition,
@@ -248,11 +238,9 @@ impl SchedulerService for SchedulerAdminService {
                     err_details,
                 );
 
-                Err(status)    
+                Err(status)
             }
         }
-
-        
     }
 
     async fn schedule(
