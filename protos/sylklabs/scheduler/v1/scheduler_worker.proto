@@ -8,8 +8,7 @@ package sylklabs.scheduler.v1;
 import "sylklabs/core/task.proto";
 
 service SchedulerWorkerService {
-	// The Communicate RPC method sets up a bidirectional stream between
-	// the scheduler and a worker node.
+	// The Communicate RPC method sets up a bidirectional stream between// the scheduler and a worker node.
 	rpc Communicate (stream sylklabs.scheduler.v1.WorkerMessage) returns (stream sylklabs.scheduler.v1.SchedulerMessage);
 }
 
