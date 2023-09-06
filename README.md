@@ -5,7 +5,7 @@
 
 <!-- ![Sylklabs Logo](logo.png) -->
 
-Welcome to Sylklabs Task Scheduler, an innovative task scheduling engine engineered to intelligently allocate tasks across a distributed network of worker nodes.
+Welcome to ProtoT Scheduler, an innovative task scheduling engine engineered to intelligently allocate tasks across a distributed network of worker nodes.
 
 ## Why?
 
