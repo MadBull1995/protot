@@ -19,23 +19,40 @@ impl TaskExecutor for MyExecutor {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+
+
+    // ** gRPC Worker Setup **
+
+    let worker = protot::client::GrpcWorker::default();
+    let res = worker.communicate().await;
+    match res {
+        Ok(()) => println!("worker done"),
+        Err(e) => println!("some error: {:?}", e)
+        
+    }
+
+
+
+    // ** Scheduler Server Setup **
+
     // Init a registry for your tasks and Executors
-    let mut tr = TaskRegistry::new();
+    // let mut tr = TaskRegistry::new();
 
-    // Register you custom executor
-    tr.register_task("some_task_name", MyExecutor {});
+    // // Register you custom executor
+    // tr.register_task("some_task_name", MyExecutor {});
 
-    // Optional configuration otherwise must have a 'configs.yaml/json' file in your root directory
-    let cfg = Config {
-        grpc_port: 44880,
-        node_type: NodeType::SingleProcess.into(),
-        num_workers: 4,
-    };
+    // // Optional configuration otherwise must have a 'configs.yaml/json' file in your root directory
+    // let cfg = Config {
+    //     grpc_port: 44880,
+    //     node_type: NodeType::SingleProcess.into(),
+    //     num_workers: 4,
+    // };
 
-    // Startup the scheduler service and workers
-    match start(tr, Some(cfg)) {
-        Err(err) => panic!("some error occured: {:?}", err),
-        Ok(()) => println!("protot server started."),
-    };
+    // // Startup the scheduler service and workers
+    // match start(tr, Some(cfg)) {
+    //     Err(err) => panic!("some error occured: {:?}", err),
+    //     Ok(()) => println!("protot server started."),
+    // };
 }
