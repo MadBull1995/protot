@@ -8,7 +8,7 @@ We are generating the protobuf code with `Sylk Build CLI`, a protobuf developer 
 
 ## Packages
 
-- `sylklabs` - The main "domain" of our project (root namespace)
+- `protot` - The main "domain" of our project (root namespace)
     - `core` - Commonly shared objects that are not subject to versioning at this momenet (We are considring them as long lasting schema, as they serve abstractions that will not need breaking changes in the near future)
     - `scheduler` - The main "Buisness logic" protocols for communication with the `ProtoT Scheduler Server` and `Worker`s nodes.
         - `v1` - The current version
@@ -16,8 +16,8 @@ We are generating the protobuf code with `Sylk Build CLI`, a protobuf developer 
 In short we have the following logical paths:
 
 ```sh
-sylklabs.core
-sylklabs.scheduler.v1
+protot.core
+protot.scheduler.v1
 ```
 
 ## Important Entities
@@ -26,9 +26,9 @@ ProtoT is based on some abstraction that is made to the general idea of "Task", 
 
 Here are some of the most important "Building blocks" of ProtoT schema:
 
-- `sylklabs.core.Task` - Our main entity for the abstraction of "Task"
-- `sylklabs.core.Config` - Some commonly used configuration structure for ProtoT runtime values
-- `sylklabs.scheduler.v1.SchedulerService` - The main API fot ProtoT scheduler server
+- `protot.core.Task` - Our main entity for the abstraction of "Task"
+- `protot.core.Config` - Some commonly used configuration structure for ProtoT runtime values
+- `protot.scheduler.v1.SchedulerService` - The main API fot ProtoT scheduler server
 
 ## Compile
 

@@ -1,4 +1,4 @@
-pub mod sylklabs {
+pub mod protot {
     pub mod core {
         tonic::include_proto!("sylklabs.core");
     }

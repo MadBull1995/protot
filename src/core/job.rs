@@ -1,4 +1,4 @@
-use crate::internal::sylklabs::scheduler::v1::ExecuteRequest;
+use crate::internal::protot::scheduler::v1::ExecuteRequest;
 
 /// A trait representing a function that can be called from a box.
 ///

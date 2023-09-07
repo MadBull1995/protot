@@ -3,7 +3,7 @@ use serde_json;
 use serde_yaml;
 use std::fs;
 
-use crate::internal::sylklabs::core::{self, Config};
+use crate::internal::protot::core::{self, Config};
 
 use super::error::SchedulerError; // Import Serialize and Deserialize traits
 
@@ -18,6 +18,13 @@ pub enum NodeType {
     Scheduler,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[allow(non_camel_case_types)]
+pub enum LoadBalancer {
+    #[serde(rename = "ROUND_ROBIN")]
+    RoundRobin,
+}
+
 #[derive(Debug, Serialize, Deserialize)] // Use the derive macros for serialization and deserialization
 pub struct SerdeConfig {
     #[serde(rename = "node_type")]
@@ -28,6 +35,8 @@ pub struct SerdeConfig {
     grpc_port: i32,
     #[serde(rename = "graceful_timeout")]
     graceful_timeout: u64,
+    #[serde(rename = "load_balancer")]
+    load_balancer: LoadBalancer,
 }
 
 #[allow(unused)]
@@ -115,6 +124,9 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
         },
         num_workers: config.num_workers,
         graceful_timeout: config.graceful_timeout,
+        load_balancer: match config.load_balancer {
+            LoadBalancer::RoundRobin => core::LoadBalancer::RoundRobin.into(),
+        },
     };
 
     Ok(cfg)

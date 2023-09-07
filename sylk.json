@@ -1,6 +1,6 @@
 {
     "organization": {
-        "domain": "sylklabs"
+        "domain": "protot"
     },
     "configs": {
         "protoBasePath": "protos",
@@ -24,20 +24,20 @@
         }
     },
     "packages": {
-        "sylklabs/scheduler/v1": {
+        "protot/scheduler/v1": {
             "name": "scheduler",
-            "package": "sylklabs.scheduler.v1",
+            "package": "protot.scheduler.v1",
             "messages": [
                 {
                     "name": "ScheduleRequest",
-                    "fullName": "sylklabs.scheduler.v1.ScheduleRequest",
+                    "fullName": "protot.scheduler.v1.ScheduleRequest",
                     "fields": [
                         {
                             "name": "task",
-                            "fullName": "sylklabs.scheduler.v1.ScheduleRequest.task",
+                            "fullName": "protot.scheduler.v1.ScheduleRequest.task",
                             "fieldType": "TYPE_MESSAGE",
                             "label": "LABEL_OPTIONAL",
-                            "messageType": "sylklabs.core.Task",
+                            "messageType": "protot.core.Task",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
@@ -48,11 +48,11 @@
                 },
                 {
                     "name": "ScheduleResponse",
-                    "fullName": "sylklabs.scheduler.v1.ScheduleResponse",
+                    "fullName": "protot.scheduler.v1.ScheduleResponse",
                     "fields": [
                         {
                             "name": "scheduled_task_id",
-                            "fullName": "sylklabs.scheduler.v1.ScheduleResponse.scheduled_task_id",
+                            "fullName": "protot.scheduler.v1.ScheduleResponse.scheduled_task_id",
                             "fieldType": "TYPE_INT32",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -65,12 +65,12 @@
                 },
                 {
                     "name": "ExecuteResponse",
-                    "fullName": "sylklabs.scheduler.v1.ExecuteResponse",
+                    "fullName": "protot.scheduler.v1.ExecuteResponse",
                     "fields": [
                         {
                             "name": "task_id",
-                            "fullName": "sylklabs.scheduler.v1.ExecuteResponse.task_id",
-                            "fieldType": "TYPE_INT32",
+                            "fullName": "protot.scheduler.v1.ExecuteResponse.task_id",
+                            "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
                             "kind": "field",
@@ -78,10 +78,10 @@
                         },
                         {
                             "name": "state",
-                            "fullName": "sylklabs.scheduler.v1.ExecuteResponse.state",
+                            "fullName": "protot.scheduler.v1.ExecuteResponse.state",
                             "fieldType": "TYPE_ENUM",
                             "label": "LABEL_OPTIONAL",
-                            "enumType": "sylklabs.core.TaskState",
+                            "enumType": "protot.core.TaskState",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 2
@@ -92,14 +92,14 @@
                 },
                 {
                     "name": "ExecuteRequest",
-                    "fullName": "sylklabs.scheduler.v1.ExecuteRequest",
+                    "fullName": "protot.scheduler.v1.ExecuteRequest",
                     "fields": [
                         {
                             "name": "task",
-                            "fullName": "sylklabs.scheduler.v1.ExecuteRequest.task",
+                            "fullName": "protot.scheduler.v1.ExecuteRequest.task",
                             "fieldType": "TYPE_MESSAGE",
                             "label": "LABEL_OPTIONAL",
-                            "messageType": "sylklabs.core.Task",
+                            "messageType": "protot.core.Task",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
@@ -110,12 +110,12 @@
                 },
                 {
                     "name": "RegistrationRequest",
-                    "fullName": "sylklabs.scheduler.v1.RegistrationRequest",
+                    "fullName": "protot.scheduler.v1.RegistrationRequest",
                     "description": "Message for worker node registration",
                     "fields": [
                         {
                             "name": "worker_id",
-                            "fullName": "sylklabs.scheduler.v1.RegistrationRequest.worker_id",
+                            "fullName": "protot.scheduler.v1.RegistrationRequest.worker_id",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -124,7 +124,7 @@
                         },
                         {
                             "name": "supported_tasks",
-                            "fullName": "sylklabs.scheduler.v1.RegistrationRequest.supported_tasks",
+                            "fullName": "protot.scheduler.v1.RegistrationRequest.supported_tasks",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_REPEATED",
                             "type": "descriptor",
@@ -133,7 +133,7 @@
                         },
                         {
                             "name": "magic_cookie",
-                            "fullName": "sylklabs.scheduler.v1.RegistrationRequest.magic_cookie",
+                            "fullName": "protot.scheduler.v1.RegistrationRequest.magic_cookie",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -147,21 +147,21 @@
                 },
                 {
                     "name": "Ack",
-                    "fullName": "sylklabs.scheduler.v1.Ack",
+                    "fullName": "protot.scheduler.v1.Ack",
                     "fields": [
                         {
                             "name": "status",
-                            "fullName": "sylklabs.scheduler.v1.Ack.status",
+                            "fullName": "protot.scheduler.v1.Ack.status",
                             "fieldType": "TYPE_ENUM",
                             "label": "LABEL_OPTIONAL",
-                            "enumType": "sylklabs.scheduler.v1.WorkerChannelStatus",
+                            "enumType": "protot.scheduler.v1.WorkerChannelStatus",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
                         },
                         {
                             "name": "message",
-                            "fullName": "sylklabs.scheduler.v1.Ack.message",
+                            "fullName": "protot.scheduler.v1.Ack.message",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -175,11 +175,11 @@
                 },
                 {
                     "name": "Disconnect",
-                    "fullName": "sylklabs.scheduler.v1.Disconnect",
+                    "fullName": "protot.scheduler.v1.Disconnect",
                     "fields": [
                         {
                             "name": "message",
-                            "fullName": "sylklabs.scheduler.v1.Disconnect.message",
+                            "fullName": "protot.scheduler.v1.Disconnect.message",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -193,14 +193,14 @@
                 },
                 {
                     "name": "AssignTaskRequest",
-                    "fullName": "sylklabs.scheduler.v1.AssignTaskRequest",
+                    "fullName": "protot.scheduler.v1.AssignTaskRequest",
                     "fields": [
                         {
                             "name": "task",
-                            "fullName": "sylklabs.scheduler.v1.AssignTaskRequest.task",
+                            "fullName": "protot.scheduler.v1.AssignTaskRequest.task",
                             "fieldType": "TYPE_MESSAGE",
                             "label": "LABEL_OPTIONAL",
-                            "messageType": "sylklabs.core.Task",
+                            "messageType": "protot.core.Task",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
@@ -212,11 +212,11 @@
                 },
                 {
                     "name": "TaskCompletion",
-                    "fullName": "sylklabs.scheduler.v1.TaskCompletion",
+                    "fullName": "protot.scheduler.v1.TaskCompletion",
                     "fields": [
                         {
                             "name": "task_id",
-                            "fullName": "sylklabs.scheduler.v1.TaskCompletion.task_id",
+                            "fullName": "protot.scheduler.v1.TaskCompletion.task_id",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -225,10 +225,10 @@
                         },
                         {
                             "name": "state",
-                            "fullName": "sylklabs.scheduler.v1.TaskCompletion.state",
+                            "fullName": "protot.scheduler.v1.TaskCompletion.state",
                             "fieldType": "TYPE_ENUM",
                             "label": "LABEL_OPTIONAL",
-                            "enumType": "sylklabs.core.TaskState",
+                            "enumType": "protot.core.TaskState",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 2
@@ -240,11 +240,11 @@
                 },
                 {
                     "name": "WorkerMessage",
-                    "fullName": "sylklabs.scheduler.v1.WorkerMessage",
+                    "fullName": "protot.scheduler.v1.WorkerMessage",
                     "fields": [
                         {
                             "name": "worker_message_type",
-                            "fullName": "sylklabs.scheduler.v1.WorkerMessage.worker_message_type",
+                            "fullName": "protot.scheduler.v1.WorkerMessage.worker_message_type",
                             "fieldType": "TYPE_ONEOF",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -253,19 +253,19 @@
                             "oneofFields": [
                                 {
                                     "name": "registration",
-                                    "fullName": "sylklabs.scheduler.v1.WorkerMessage.worker_message_type.registration",
+                                    "fullName": "protot.scheduler.v1.WorkerMessage.worker_message_type.registration",
                                     "fieldType": "TYPE_MESSAGE",
                                     "label": "LABEL_OPTIONAL",
-                                    "messageType": "sylklabs.scheduler.v1.RegistrationRequest",
+                                    "messageType": "protot.scheduler.v1.RegistrationRequest",
                                     "index": 1,
                                     "kind": "oneof"
                                 },
                                 {
                                     "name": "completion",
-                                    "fullName": "sylklabs.scheduler.v1.WorkerMessage.worker_message_type.completion",
+                                    "fullName": "protot.scheduler.v1.WorkerMessage.worker_message_type.completion",
                                     "fieldType": "TYPE_MESSAGE",
                                     "label": "LABEL_OPTIONAL",
-                                    "messageType": "sylklabs.scheduler.v1.TaskCompletion",
+                                    "messageType": "protot.scheduler.v1.TaskCompletion",
                                     "index": 2,
                                     "kind": "oneof"
                                 }
@@ -278,12 +278,12 @@
                 },
                 {
                     "name": "SchedulerMessage",
-                    "fullName": "sylklabs.scheduler.v1.SchedulerMessage",
+                    "fullName": "protot.scheduler.v1.SchedulerMessage",
                     "description": "Scheduler source messages can be one of the following types",
                     "fields": [
                         {
                             "name": "scheduler_message_type",
-                            "fullName": "sylklabs.scheduler.v1.SchedulerMessage.scheduler_message_type",
+                            "fullName": "protot.scheduler.v1.SchedulerMessage.scheduler_message_type",
                             "fieldType": "TYPE_ONEOF",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -292,28 +292,28 @@
                             "oneofFields": [
                                 {
                                     "name": "ack",
-                                    "fullName": "sylklabs.scheduler.v1.SchedulerMessage.scheduler_message_type.ack",
+                                    "fullName": "protot.scheduler.v1.SchedulerMessage.scheduler_message_type.ack",
                                     "fieldType": "TYPE_MESSAGE",
                                     "label": "LABEL_OPTIONAL",
-                                    "messageType": "sylklabs.scheduler.v1.Ack",
+                                    "messageType": "protot.scheduler.v1.Ack",
                                     "index": 1,
                                     "kind": "oneof"
                                 },
                                 {
                                     "name": "assign_task",
-                                    "fullName": "sylklabs.scheduler.v1.SchedulerMessage.scheduler_message_type.assign_task",
+                                    "fullName": "protot.scheduler.v1.SchedulerMessage.scheduler_message_type.assign_task",
                                     "fieldType": "TYPE_MESSAGE",
                                     "label": "LABEL_OPTIONAL",
-                                    "messageType": "sylklabs.scheduler.v1.AssignTaskRequest",
+                                    "messageType": "protot.scheduler.v1.AssignTaskRequest",
                                     "index": 2,
                                     "kind": "oneof"
                                 },
                                 {
                                     "name": "disconnect",
-                                    "fullName": "sylklabs.scheduler.v1.SchedulerMessage.scheduler_message_type.disconnect",
+                                    "fullName": "protot.scheduler.v1.SchedulerMessage.scheduler_message_type.disconnect",
                                     "fieldType": "TYPE_MESSAGE",
                                     "label": "LABEL_OPTIONAL",
-                                    "messageType": "sylklabs.scheduler.v1.Disconnect",
+                                    "messageType": "protot.scheduler.v1.Disconnect",
                                     "index": 3,
                                     "kind": "oneof"
                                 }
@@ -328,17 +328,17 @@
             "enums": [
                 {
                     "name": "WorkerChannelStatus",
-                    "fullName": "sylklabs.scheduler.v1.WorkerChannelStatus",
+                    "fullName": "protot.scheduler.v1.WorkerChannelStatus",
                     "values": [
                         {
                             "name": "UNKNOWN_CHANNEL_STATUS",
-                            "fullName": "sylklabs.scheduler.v1.WorkerChannelStatus.UNKNOWN_CHANNEL_STATUS",
+                            "fullName": "protot.scheduler.v1.WorkerChannelStatus.UNKNOWN_CHANNEL_STATUS",
                             "type": "descriptor",
                             "kind": "enum_value"
                         },
                         {
                             "name": "READY",
-                            "fullName": "sylklabs.scheduler.v1.WorkerChannelStatus.READY",
+                            "fullName": "protot.scheduler.v1.WorkerChannelStatus.READY",
                             "index": 1,
                             "number": 1,
                             "type": "descriptor",
@@ -346,7 +346,7 @@
                         },
                         {
                             "name": "CLOSED",
-                            "fullName": "sylklabs.scheduler.v1.WorkerChannelStatus.CLOSED",
+                            "fullName": "protot.scheduler.v1.WorkerChannelStatus.CLOSED",
                             "index": 2,
                             "number": 2,
                             "type": "descriptor",
@@ -360,7 +360,7 @@
             ],
             "type": "package",
             "dependencies": [
-                "sylklabs.core"
+                "protot.core"
             ],
             "extensions": {
                 "files": {
@@ -370,21 +370,21 @@
             "services": [
                 {
                     "name": "SchedulerService",
-                    "fullName": "sylklabs.scheduler.v1.SchedulerService",
+                    "fullName": "protot.scheduler.v1.SchedulerService",
                     "methods": [
                         {
                             "name": "Execute",
-                            "fullName": "sylklabs.scheduler.v1.SchedulerService.Execute",
-                            "inputType": "sylklabs.scheduler.v1.ExecuteRequest",
-                            "outputType": "sylklabs.scheduler.v1.ExecuteResponse",
+                            "fullName": "protot.scheduler.v1.SchedulerService.Execute",
+                            "inputType": "protot.scheduler.v1.ExecuteRequest",
+                            "outputType": "protot.scheduler.v1.ExecuteResponse",
                             "type": "descriptor",
                             "kind": "method"
                         },
                         {
                             "name": "Schedule",
-                            "fullName": "sylklabs.scheduler.v1.SchedulerService.Schedule",
-                            "inputType": "sylklabs.scheduler.v1.ScheduleRequest",
-                            "outputType": "sylklabs.scheduler.v1.ScheduleResponse",
+                            "fullName": "protot.scheduler.v1.SchedulerService.Schedule",
+                            "inputType": "protot.scheduler.v1.ScheduleRequest",
+                            "outputType": "protot.scheduler.v1.ScheduleResponse",
                             "type": "descriptor",
                             "kind": "method"
                         }
@@ -393,14 +393,14 @@
                 },
                 {
                     "name": "SchedulerWorkerService",
-                    "fullName": "sylklabs.scheduler.v1.SchedulerWorkerService",
+                    "fullName": "protot.scheduler.v1.SchedulerWorkerService",
                     "methods": [
                         {
                             "name": "Communicate",
-                            "fullName": "sylklabs.scheduler.v1.SchedulerWorkerService.Communicate",
+                            "fullName": "protot.scheduler.v1.SchedulerWorkerService.Communicate",
                             "description": "The Communicate RPC method sets up a bidirectional stream between\nthe scheduler and a worker node.",
-                            "inputType": "sylklabs.scheduler.v1.WorkerMessage",
-                            "outputType": "sylklabs.scheduler.v1.SchedulerMessage",
+                            "inputType": "protot.scheduler.v1.WorkerMessage",
+                            "outputType": "protot.scheduler.v1.SchedulerMessage",
                             "clientStreaming": true,
                             "serverStreaming": true,
                             "type": "descriptor",
@@ -412,17 +412,17 @@
                 }
             ]
         },
-        "sylklabs/core": {
+        "protot/core": {
             "name": "core",
-            "package": "sylklabs.core",
+            "package": "protot.core",
             "messages": [
                 {
                     "name": "Task",
-                    "fullName": "sylklabs.core.Task",
+                    "fullName": "protot.core.Task",
                     "fields": [
                         {
                             "name": "id",
-                            "fullName": "sylklabs.core.Task.id",
+                            "fullName": "protot.core.Task.id",
                             "fieldType": "TYPE_STRING",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -431,7 +431,7 @@
                         },
                         {
                             "name": "payload",
-                            "fullName": "sylklabs.core.Task.payload",
+                            "fullName": "protot.core.Task.payload",
                             "fieldType": "TYPE_MESSAGE",
                             "label": "LABEL_OPTIONAL",
                             "messageType": "google.protobuf.Any",
@@ -446,21 +446,21 @@
                 },
                 {
                     "name": "Config",
-                    "fullName": "sylklabs.core.Config",
+                    "fullName": "protot.core.Config",
                     "fields": [
                         {
                             "name": "node_type",
-                            "fullName": "sylklabs.core.Config.node_type",
+                            "fullName": "protot.core.Config.node_type",
                             "fieldType": "TYPE_ENUM",
                             "label": "LABEL_OPTIONAL",
-                            "enumType": "sylklabs.core.NodeType",
+                            "enumType": "protot.core.NodeType",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
                         },
                         {
                             "name": "num_workers",
-                            "fullName": "sylklabs.core.Config.num_workers",
+                            "fullName": "protot.core.Config.num_workers",
                             "fieldType": "TYPE_INT32",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -469,7 +469,7 @@
                         },
                         {
                             "name": "grpc_port",
-                            "fullName": "sylklabs.core.Config.grpc_port",
+                            "fullName": "protot.core.Config.grpc_port",
                             "fieldType": "TYPE_INT32",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
@@ -478,12 +478,22 @@
                         },
                         {
                             "name": "graceful_timeout",
-                            "fullName": "sylklabs.core.Config.graceful_timeout",
+                            "fullName": "protot.core.Config.graceful_timeout",
                             "fieldType": "TYPE_UINT64",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 4
+                        },
+                        {
+                            "name": "load_balancer",
+                            "fullName": "protot.core.Config.load_balancer",
+                            "fieldType": "TYPE_ENUM",
+                            "label": "LABEL_OPTIONAL",
+                            "enumType": "protot.core.LoadBalancer",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 5
                         }
                     ],
                     "type": "descriptor",
@@ -493,8 +503,23 @@
             ],
             "enums": [
                 {
+                    "name": "LoadBalancer",
+                    "fullName": "protot.core.LoadBalancer",
+                    "values": [
+                        {
+                            "name": "ROUND_ROBIN",
+                            "fullName": "protot.core.LoadBalancer.ROUND_ROBIN",
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "enum",
+                    "tag": "configs"
+                },
+                {
                     "name": "NodeType",
-                    "fullName": "sylklabs.core.NodeType",
+                    "fullName": "protot.core.NodeType",
                     "description": "The possible node types for proto tasker process",
                     "values": [
                         {
@@ -523,7 +548,7 @@
                 },
                 {
                     "name": "TaskState",
-                    "fullName": "sylklabs.core.TaskState",
+                    "fullName": "protot.core.TaskState",
                     "description": "The possible task states",
                     "values": [
                         {

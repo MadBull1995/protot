@@ -246,7 +246,7 @@ impl Worker for LocalWorker {
 mod tests {
 
     use crate::core::job::Job;
-    use crate::internal::sylklabs::scheduler::v1::ExecuteRequest;
+    use crate::internal::protot::scheduler::v1::ExecuteRequest;
 
     use super::*;
     use std::sync::mpsc::channel;

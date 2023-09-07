@@ -1,11 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 
-use tonic::{transport::Channel, Response, Status};
-use protot::internal::sylklabs::scheduler::v1::{ExecuteRequest, ExecuteResponse};
-use protot::internal::sylklabs::core::Task;
 use protot::{
-    core::worker_pool::TaskRegistry, start, SchedulerError, TaskExecutorImpl1, TaskExecutorImpl2, execute_task, internal::sylklabs::scheduler::v1::scheduler_service_client::SchedulerServiceClient,
+    core::worker_pool::TaskRegistry, start, SchedulerError, TaskExecutorImpl1, TaskExecutorImpl2,
 };
 // use protot::internal::sylklabs::scheduler::v1::ExecuteRequest;
 #[tokio::main]

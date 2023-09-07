@@ -67,9 +67,10 @@ pub mod core;
 pub mod internal;
 mod server;
 mod utils;
-use crate::core::worker_pool::{TaskExecutor, TaskRegistry};
+use crate::{core::worker_pool::{TaskExecutor, TaskRegistry}, server::start_single_process_grpc_server};
 pub use lazy_static::lazy_static;
 use log::{info, debug};
+use server::start_scheduler_grpc_server;
 
 use std::{
     sync::{Arc, Mutex},
@@ -77,8 +78,7 @@ use std::{
     time::Duration,
 };
 
-use crate::server::start_grpc_server;
-use internal::sylklabs::{
+use internal::protot::{
     self,
     core::{Config, Task},
     scheduler::v1::ExecuteRequest,
@@ -112,13 +112,13 @@ pub async fn start(
     };
 
     match cfgs.node_type() {
-        sylklabs::core::NodeType::SingleProcess => init_grpc_scheduler(cfgs, opts).await,
-        sylklabs::core::NodeType::Scheduler => {
-            init_grpc_scheduler(cfgs, opts).await
+        protot::core::NodeType::SingleProcess => init_single_process_grpc_scheduler(cfgs, opts).await,
+        protot::core::NodeType::Scheduler => {
+            init_distributed_grpc_scheduler(cfgs, opts).await
         },
         _ => Err(SchedulerError::SchedulerUnimplemented(format!(
             "Unimplemented node type {}",
-            sylklabs::core::NodeType::from_i32(cfgs.node_type)
+            protot::core::NodeType::from_i32(cfgs.node_type)
                 .unwrap()
                 .as_str_name()
         ))),
@@ -128,8 +128,8 @@ pub async fn start(
 }
 
 
-async fn init_scheduler_server( 
-    cfg: sylklabs::core::Config,
+async fn init_distributed_grpc_scheduler( 
+    cfg: protot::core::Config,
     opts: ProcessOptions,
 ) -> Result<(), SchedulerError> {
     let registry = opts.task_executors;
@@ -145,7 +145,7 @@ async fn init_scheduler_server(
 
     collect_stats();
     // Todo start scheduler server
-    match start_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
+    match start_scheduler_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
         Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
             "Scheduler errored: {:?}",
             &*err
@@ -213,8 +213,8 @@ fn collect_stats() {
     log::debug!("collecting stats disabled, to enable use feature flag: \"stats\"");
 }
 
-async fn init_grpc_scheduler(
-    cfg: sylklabs::core::Config,
+async fn init_single_process_grpc_scheduler(
+    cfg: protot::core::Config,
     opts: ProcessOptions,
 ) -> Result<(), SchedulerError> {
 
@@ -257,7 +257,7 @@ async fn init_grpc_scheduler(
     // }
 
     // Todo start scheduler server
-    match start_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
+    match start_single_process_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
         Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
             "Scheduler errored: {:?}",
             &*err

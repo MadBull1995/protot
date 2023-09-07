@@ -1,7 +1,7 @@
-use crate::{internal::sylklabs::scheduler::v1::{SchedulerMessage, scheduler_message, AssignTaskRequest, ExecuteResponse}, utils::shared::GrpcWorkerChannels};
+use crate::{internal::protot::{scheduler::v1::{SchedulerMessage, scheduler_message, AssignTaskRequest, ExecuteResponse}, core::TaskState}, utils::shared::GrpcWorkerChannels};
 
 use super::{worker_pool::AsyncTaskExecutor, load_balancer::LoadBalancer};
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 use async_trait::async_trait;
 use log::error;
 use tokio::sync::{
@@ -62,37 +62,5 @@ impl<B: LoadBalancer> DropClient for GrpcSharedState<B> {
         println!("dropping clients");
         let binding = self.grpc_worker_channels.lock().await;
         drop(binding)
-    }
-}
-
-// impl<B: LoadBalancer> Default for GrpcSharedState<B> {
-//     fn default() -> Self {
-//         let round_robin = RoundRobinBalancer::new();
-//         Self::new(round_robin)
-//     }
-// }
-
-pub struct GrpcExecutor {
-    jobs: mpsc::Sender<SchedulerMessage>
-}
-
-#[async_trait(?Send)]
-impl AsyncTaskExecutor for GrpcExecutor {
-    async fn execute(&self, args: crate::internal::sylklabs::scheduler::v1::ExecuteRequest) {
-        let t = args.task.unwrap();
-        let scheduler_request = SchedulerMessage {
-            scheduler_message_type: Some(
-                scheduler_message::SchedulerMessageType::AssignTask(
-                    AssignTaskRequest {
-                        task: Some(t)
-                    }
-                )
-            )
-        };
-
-        match self.jobs.send(scheduler_request).await {
-            Err(e) => error!("grpc executor error: {}", e),
-            _ => ()
-        }
     }
 }

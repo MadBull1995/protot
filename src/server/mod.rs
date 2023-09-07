@@ -11,11 +11,11 @@ use std::{
 use std::future::Future;
 use tokio_util::sync::CancellationToken;
 
-use crate::{internal::sylklabs::{scheduler::v1::{Ack, WorkerChannelStatus, worker_message::{self, WorkerMessageType}}, core::NodeType}, core::{grpc_executor::GrpcSharedState, load_balancer::{LoadBalancer, RoundRobinBalancer}}};
+use crate::{internal::protot::{scheduler::v1::{Ack, WorkerChannelStatus, worker_message::{self, WorkerMessageType}}, core::NodeType}, core::{grpc_executor::GrpcSharedState, load_balancer::{LoadBalancer, RoundRobinBalancer}}};
 #[allow(unused_imports)]
 use crate::{
     core::worker_pool::{self, WorkerPool},
-    internal::sylklabs::{
+    internal::protot::{
         core::Task,
         scheduler::v1::{
             scheduler_message,
@@ -29,7 +29,7 @@ use crate::{
     },
     logger,
 };
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, TryFutureExt};
 use log::{info, error, debug};
 use tokio::{
     signal::unix::{signal, SignalKind},
@@ -67,6 +67,8 @@ impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
         // Spawn a new task to process incoming messages and send responses
         tokio::spawn(async move {
             let mut stream = request.into_inner();
+            let mut registered_worker_id: Option<String> = None;  // Add this line
+
             while let Some(worker_message) = stream.next().await {
                 match worker_message {
                     Ok(message) => {
@@ -80,6 +82,7 @@ impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
                                 let worker_id = registration_request.worker_id.clone();
                                 let mut channels = shared_state.grpc_worker_channels.lock().await;
                                 channels.insert(worker_id.clone(), (tx.clone(), tx_cancel.clone()));
+                                registered_worker_id = Some(worker_id.clone());
                                 SchedulerMessage {
                                     scheduler_message_type: Some(
                                         scheduler_message::SchedulerMessageType::Ack(
@@ -115,9 +118,10 @@ impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
                     }
                     Err(status) => {
                         error!("{:?}: {:?}", status, status.metadata());
-                        
-                        // Handle error from worker
-                        // You might want to log or take some action here
+                        if let Some(worker_id) = registered_worker_id.take() {  // Use the stored worker ID
+                            let mut channels = shared_state.grpc_worker_channels.lock().await;
+                            channels.remove(&worker_id);
+                        }
                     }
                 }
             }
@@ -156,7 +160,7 @@ pub struct SharedData {
 
 // Function to start the scheduler single process node gRPC server
 // #[tonic::async_trait]
-pub async fn start_grpc_server(
+pub async fn start_scheduler_grpc_server(
     port: i32,
     pool: worker_pool::WorkerPool,
     graceful_timeout: u64,
@@ -256,6 +260,92 @@ pub async fn start_grpc_server(
     Ok(())
 }
 
+pub async fn start_single_process_grpc_server(
+    port: i32,
+    pool: worker_pool::WorkerPool,
+    graceful_timeout: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(feature = "stats")]
+    {
+        // Spawn a new task for the metrics server
+        tokio::spawn(async {
+            if let Err(e) = metrics::start_metrics_server().await {
+                // Handle the error as appropriate for your application
+                eprintln!("Metrics server failed: {:?}", e);
+            }
+        });
+    }
+
+    // Channel for signaling gRPC server shutdown
+    let (tx, mut rx) = mpsc::channel(1);
+
+    // Init the worker pool
+    let cloned_pool = pool.clone();
+    let shared_data = Arc::new(SharedData {
+        worker_pool: Arc::new(Mutex::new(pool)), // Pass the actual worker pool here
+    });
+
+    // gRPC server setup
+    let addr = format!("0.0.0.0:{}", port).as_str().parse()?;
+
+    // SchedulerService - admin service for communicating with scheduler by clients
+    let admin_service =
+        SchedulerServiceServer::new(SchedulerSingleProcessAdminService::new(shared_data.clone()));
+
+    // This AtomicBool will be used to track if the interrupt was previously received
+    let interrupt_received = Arc::new(AtomicBool::new(false));
+
+    // Spawn a new task to listen for shutdown signals
+    tokio::spawn(async move {
+        let mut stream = signal(SignalKind::interrupt()).unwrap();
+        loop {
+            stream.recv().await;
+            if interrupt_received.load(Ordering::Relaxed) {
+                // Second Ctrl+C received, forcibly terminate
+                log::debug!("second interrupt received, force quitting...");
+                process::exit(1);
+            } else {
+                tokio::spawn(async move {
+                    sleep(Duration::from_secs(graceful_timeout)).await;
+                    log::debug!("Force shutdown after timeout: {}",graceful_timeout);
+                        process::exit(1);
+                });
+                // First Ctrl+C received, initiate graceful shutdown
+                log::debug!("server interrupted");
+
+                interrupt_received.store(true, Ordering::Relaxed);
+
+                let pool = cloned_pool.clone();
+                // Explicitly dropping worker pool to kick off cleanup
+                // Drop the pool in a new task
+                // Note: we spawn here an `std` thread to overcome any blocking
+                // to tokio runtime (for force shutdown)
+                std::thread::spawn(move || {
+                    // If WorkerPool started with shutdown flag then it is handled on drop impl
+                    drop(pool);
+                    
+                });
+
+                // Send the signal to shutdown the server
+                tx.send(()).await.unwrap();
+            }
+        }
+    });
+
+    let server = Server::builder()
+        .add_service(admin_service)
+        .serve_with_shutdown(addr, async {
+            // Wait for the signal to start the shutdown
+            rx.recv().await;
+        });
+
+    log::debug!("gRPC server started");
+    server.await?;
+
+    Ok(())
+}
+
+
 pub struct SchedulerAdminService<B: LoadBalancer> {
     shared_data: Arc<SharedData>,
     shared_grpc_state: Option<Arc<GrpcSharedState<B>>>,
@@ -333,6 +423,94 @@ impl<B: LoadBalancer> SchedulerService for SchedulerAdminService<B> {
             }
         }
 
+        
+    }
+
+    async fn schedule(
+        &self,
+        request: Request<ScheduleRequest>,
+    ) -> Result<Response<ScheduleResponse>, Status> {
+        let shared_data = self.shared_data.clone();
+        let mut err_details = ErrorDetails::new();
+        err_details
+            .add_precondition_failure_violation(
+                "unimplemented",
+                "schedule",
+                "admin schedule server isnt supporting scheduling of tasks",
+            )
+            .add_help_link("description of link", "https://resource.example.local")
+            .set_localized_message("en-US", "message for the user");
+        // Generate error status
+        let status = Status::with_error_details(
+            tonic::Code::Unimplemented,
+            "request contains invalid arguments",
+            err_details,
+        );
+        Err(status)
+    }
+}
+
+
+pub struct SchedulerSingleProcessAdminService {
+    shared_data: Arc<SharedData>,
+}
+
+impl SchedulerSingleProcessAdminService {
+    fn new(shared_data: Arc<SharedData>) -> Self {
+        Self { shared_data  }
+    }
+}
+
+#[tonic::async_trait]
+impl SchedulerService for SchedulerSingleProcessAdminService {
+    async fn execute(
+        &self,
+        request: Request<ExecuteRequest>,
+    ) -> Result<Response<ExecuteResponse>, Status> {
+        let shared_data = self.shared_data.as_ref().clone();
+        let req = request.into_inner().clone();
+        let task_name = req.task.as_ref().unwrap().id.clone();
+        println!("task->{}", task_name);
+
+        // Clone the shared data for the closure
+        let cloned_shared = shared_data.worker_pool.as_ref().lock().await;
+
+        // Capture the 'o' value from the lock before the async block
+        let o_clone = { cloned_shared.executors.clone() };
+
+        // Execute the logic using the cloned shared data and the cloned request
+        match cloned_shared.execute(
+            move |args| {
+                let logic = o_clone.lock().unwrap();
+                log::debug!("executing task: {}", task_name,);
+                logic.get_executor(&task_name).unwrap().execute(args);
+            },
+            req,
+        ) {
+            Ok(res) => Ok(Response::new(ExecuteResponse {
+                ..Default::default()
+            })),
+            Err(err) => {
+                let mut err_details = ErrorDetails::new();
+                err_details
+                    .add_precondition_failure_violation(
+                        "EXECUTOR",
+                        "WorkerPool",
+                        format!("failed to execute task on worker pool: {:?}", err),
+                    )
+                    .add_help_link("documentation", "https://protot.io/docs/help")
+                    .set_localized_message("en-US", "error executing task");
+
+                // Generate error status
+                let status = Status::with_error_details(
+                    tonic::Code::FailedPrecondition,
+                    "request contains invalid arguments",
+                    err_details,
+                );
+
+                Err(status)
+            }
+        }
         
     }
 

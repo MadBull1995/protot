@@ -3,12 +3,14 @@ use std::{
     sync::Arc,
     error::Error,
 };
+use async_trait::async_trait;
 use tokio::{
     sync::{mpsc, Mutex}, time::sleep,
 };
+use tokio_stream::StreamExt;
 use std::time::Duration;
 use tonic::{Request, Response, Status, transport::Channel };
-use crate::{internal::sylklabs::{
+use crate::{internal::protot::{
     core::{Task, TaskState},
     scheduler::v1::{
         ExecuteRequest,
@@ -16,50 +18,45 @@ use crate::{internal::sylklabs::{
         scheduler_worker_service_client::SchedulerWorkerServiceClient,
         scheduler_service_client::SchedulerServiceClient, WorkerMessage, RegistrationRequest, worker_message, TaskCompletion, scheduler_message
     }
-}, core::worker_pool::AsyncTaskExecutor,
+}, core::worker_pool::{AsyncTaskExecutor, GrpcWorkersRegistry},
 };
 
-#[macro_export]
-macro_rules! execute_task {
-    ($client:expr, $name:expr) => {
-        async {
-            async fn process_client_call(c: &mut SchedulerServiceClient<Channel>) -> Result<Response<ExecuteResponse>, Status> {
-                let request = ExecuteRequest::default();
-                c.execute(request).await
-            }
-            println!("{}", $name.to_string());
-            let t = Task::default();
-            let request = tonic::Request::new(ExecuteRequest {
-                task: Some(t),
-            });
-            match process_client_call($client).await {
-                Ok(response) => {
-                    let reply = response.into_inner();
-                    println!("Server responded with message: {:?}", reply);
-                }
-                Err(e) => println!("Failed to call SayHello: {}", e),
-            }
-        }
-    };
-}
+// #[macro_export]
+// macro_rules! execute_task {
+//     ($client:expr, $name:expr) => {
+//         async {
+//             async fn process_client_call(c: &mut SchedulerServiceClient<Channel>) -> Result<Response<ExecuteResponse>, Status> {
+//                 let request = ExecuteRequest::default();
+//                 c.execute(request).await
+//             }
+//             println!("{}", $name.to_string());
+//             let t = Task::default();
+//             let request = tonic::Request::new(ExecuteRequest {
+//                 task: Some(t),
+//             });
+//             process_client_call($client).await?
+//         }
+//     };
+// }
 
-struct GrpcExecutor {
-    workers: Arc<Mutex<Vec<SchedulerServiceClient<Channel>>>>
-}
+// struct GrpcExecutor {
+//     workers: Arc<Mutex<Vec<SchedulerServiceClient<Channel>>>>
+// }
 
-#[tonic::async_trait(?Send)]
-impl AsyncTaskExecutor for GrpcExecutor {
-    async fn execute(&self, args: ExecuteRequest) {
-        let mut w = self.workers.lock().await;
-        match w.get_mut(0) {
-            None => { println!("client worker not found")}
-            Some(c) => execute_task!(c, "some-task").await
-        }
-    }
-}
+// #[async_trait(?Send)]
+// impl AsyncTaskExecutor for GrpcExecutor {
+//     async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, Status> {
+//         let mut w = self.workers.lock().await;
+//         match w.get_mut(0) {
+//             None => { Err(Status::aborted("client worker not found"))? }
+//             Some(c) => execute_task!(c, "some-task").await
+//         }
+//     }
+// }
 
 pub struct GrpcWorker {
-    registeration_details: RegistrationRequest
+    registeration_details: RegistrationRequest,
+    registry: GrpcWorkersRegistry,
 }
 
 impl Default for GrpcWorker {
@@ -70,10 +67,11 @@ impl Default for GrpcWorker {
     }
 }
 
-struct GrpcWorkerBuilder {
+pub struct GrpcWorkerBuilder {
     worker_id: Option<String>,
     tasks: Vec<String>,
     cookie: Option<String>,
+    registry: Option<GrpcWorkersRegistry>,
 }
 
 impl GrpcWorkerBuilder {
@@ -81,7 +79,8 @@ impl GrpcWorkerBuilder {
         GrpcWorkerBuilder { 
             worker_id: Some("SomeWorkerId".to_string()),
             tasks: Vec::new(),
-            cookie: None
+            cookie: None,
+            registry: None,
         }
     }
 
@@ -90,8 +89,8 @@ impl GrpcWorkerBuilder {
         self
     }
 
-    pub fn add_task(mut self, task_name: String) -> Self {
-        self.tasks.push(task_name);
+    pub fn with_registry(mut self, registry: GrpcWorkersRegistry) -> Self {
+        self.registry = Some(registry);
         self
     }
 
@@ -105,7 +104,8 @@ impl GrpcWorkerBuilder {
                 magic_cookie: self.cookie
                     .clone()
                     .unwrap_or("SomeSecert".to_string())
-            }
+            },
+            registry: self.registry.unwrap_or(GrpcWorkersRegistry::new()),
         }
     }
 }
@@ -139,7 +139,6 @@ impl GrpcWorker {
                     };
                     yield response;
                 } else {
-                    println!("some error from server");
                     break;
                 }
             }
@@ -154,13 +153,24 @@ impl GrpcWorker {
                     match msg {
                         scheduler_message::SchedulerMessageType::AssignTask(t) => {
                             let bind = t.task.clone();
-                            println!("executing task: {:?}", bind.unwrap().id);
-                            sleep(Duration::from_secs(2)).await;
-                            let task_complete = TaskCompletion {
-                                task_id: t.task.unwrap().id,
-                                state: TaskState::Success.into()
-                            };
-                            binding.send(task_complete).await?;
+                            // println!("executing task: {:?}", bind.unwrap().id);
+                            let executor = self.registry.get_executor(&bind.unwrap().id);
+                            match executor {
+                                Ok(operation) => {
+
+                                    match operation.execute(ExecuteRequest { task: t.task.clone() }).await {
+                                        Ok(completion) => {
+                                            // Sending task response to the communicate loop
+                                            binding.send(completion).await?;
+                                        }
+                                        Err(err) => {
+                                            panic!("failed to execute task: {:?}", err);
+                                        }
+                                    }
+                                    
+                                },
+                                Err(err) => Err(err)?
+                            }
                         },
                         scheduler_message::SchedulerMessageType::Disconnect(diconnect) => {
                             println!("disconnecting worker: {:?}", diconnect);

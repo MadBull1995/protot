@@ -3,8 +3,6 @@
 > **Note**
 > Work In Progress
 
-<!-- ![Sylklabs Logo](logo.png) -->
-
 Welcome to ProtoT Scheduler, an innovative task scheduling engine engineered to intelligently allocate tasks across a distributed network of worker nodes.
 
 ## Why?
@@ -128,5 +126,4 @@ For any queries or clarifications, please don’t hesitate to contact us at `con
 
 ---
 
-**This project and documentation are brought to you by [sylk.build](https://www.sylk.build)**  
-© 2023 Sylklabs Technologies. All rights reserved.
+Created with `<>` by Amit Shmulevitch.

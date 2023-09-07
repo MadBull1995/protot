@@ -6,8 +6,11 @@ use std::{
         mpsc::{channel, Receiver, Sender},
         Arc, Condvar, Mutex,
     },
-    thread
+    thread, error::Error
 };
+
+use async_trait::async_trait;
+use tonic::Status;
 
 use super::{
     job::Job,
@@ -16,7 +19,7 @@ use super::{
 
 // Lib modules
 #[allow(unused_imports)]
-use crate::{internal::sylklabs::scheduler::v1::ExecuteRequest, logger, SchedulerError};
+use crate::{internal::protot::scheduler::v1::{ExecuteRequest, TaskCompletion}, logger, SchedulerError};
 
 #[cfg(feature = "stats")]
 use crate::server::metrics::{
@@ -29,9 +32,9 @@ pub trait TaskExecutor: Send + Sync + 'static {
 }
 
 // Trait for task execution
-#[tonic::async_trait(?Send)]
+#[async_trait(?Send)]
 pub trait AsyncTaskExecutor: Send + Sync + 'static {
-    async fn execute(&self, args: ExecuteRequest);
+    async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, Box<dyn Error>>;
 }
 
 // Struct to hold task executions and their argument implementations
@@ -49,6 +52,28 @@ impl GrpcWorkersRegistry {
     pub fn new() -> Self {
         GrpcWorkersRegistry {
             registry: HashMap::new()
+        }
+    }
+
+    pub fn register_task<E>(&mut self, task_name: &str, executor: E)
+    where
+        E: AsyncTaskExecutor,
+    {
+        self.registry
+            .insert(task_name.to_string(), Box::new(executor));
+    }
+
+    pub fn get_executor(
+        &self,
+        excutor_name: &str,
+    ) -> Result<&Box<dyn AsyncTaskExecutor>, SchedulerError> {
+        if let Some(executor) = self.registry.get(excutor_name) {
+            Ok(executor)
+        } else {
+            Err(SchedulerError::TaskExecutionError(format!(
+                "Executor not found for task: {}",
+                excutor_name
+            )))
         }
     }
 }
