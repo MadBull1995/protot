@@ -955,6 +955,7 @@ dependencies = [
  "serde_yaml 0.9.25",
  "tokio",
  "tokio-stream",
+ "tokio-util",
  "tonic",
  "tonic-build",
  "tonic-types",

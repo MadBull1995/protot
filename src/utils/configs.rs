@@ -26,6 +26,8 @@ pub struct SerdeConfig {
     num_workers: i32,
     #[serde(rename = "grpc_port")]
     grpc_port: i32,
+    #[serde(rename = "graceful_timeout")]
+    graceful_timeout: u64,
 }
 
 #[allow(unused)]
@@ -112,6 +114,7 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
             _ => core::NodeType::SingleProcess.into(),
         },
         num_workers: config.num_workers,
+        graceful_timeout: config.graceful_timeout,
     };
 
     Ok(cfg)

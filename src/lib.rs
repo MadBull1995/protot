@@ -62,13 +62,14 @@
 //! This crate and its documentation are brought to you by [sylk.build](https://www.sylk.build), © 2023 Sylk Technologies.
 //!
 
-mod client;
+pub mod client;
 pub mod core;
 pub mod internal;
 mod server;
 mod utils;
 use crate::core::worker_pool::{TaskExecutor, TaskRegistry};
 pub use lazy_static::lazy_static;
+use log::{info, debug};
 
 use std::{
     sync::{Arc, Mutex},
@@ -85,16 +86,20 @@ use internal::sylklabs::{
 use protobuf::well_known_types::{any::Any, struct_};
 pub use utils::{configs::config_load, error::SchedulerError, logger};
 
-pub fn start(registry: TaskRegistry, configurations: Option<Config>) -> Result<(), SchedulerError> {
+pub async fn start(
+    registry: TaskRegistry,
+    configurations: Option<Config>
+) -> Result<(), SchedulerError> {
+
     let _ = logger::init();
-    log::info!("Scheduler starting");
+    info!("Scheduler starting");
 
     // Loading configurations to `sylklabs.core.Config` message from yaml/json/toml
     let cfgs = match configurations {
         Some(cfgs) => cfgs,
         None => match config_load("configs.yaml".to_string()) {
             Ok(cfg) => {
-                log::debug!("Loaded configurations: {:?}", cfg,);
+                debug!("Loaded configurations: {:?}", cfg,);
                 cfg
             }
             Err(e) => panic!("errored: {:?}", e),
@@ -107,10 +112,10 @@ pub fn start(registry: TaskRegistry, configurations: Option<Config>) -> Result<(
     };
 
     match cfgs.node_type() {
-        sylklabs::core::NodeType::SingleProcess => init_single_process_scheduler(cfgs, opts),
-        // sylklabs::core::NodeType::Scheduler => {
-        //     init_scheduler_server(cfgs)
-        // },
+        sylklabs::core::NodeType::SingleProcess => init_grpc_scheduler(cfgs, opts).await,
+        sylklabs::core::NodeType::Scheduler => {
+            init_grpc_scheduler(cfgs, opts).await
+        },
         _ => Err(SchedulerError::SchedulerUnimplemented(format!(
             "Unimplemented node type {}",
             sylklabs::core::NodeType::from_i32(cfgs.node_type)
@@ -122,9 +127,34 @@ pub fn start(registry: TaskRegistry, configurations: Option<Config>) -> Result<(
     Ok(())
 }
 
-// fn init_scheduler_server() -> Result<(), SchedulerError> {
-//     Ok(())
-// }
+
+async fn init_scheduler_server( 
+    cfg: sylklabs::core::Config,
+    opts: ProcessOptions,
+) -> Result<(), SchedulerError> {
+    let registry = opts.task_executors;
+
+    let executors = Arc::new(Mutex::new(registry));
+
+    let pool = core::worker_pool::Builder::new()
+        .num_workers(cfg.num_workers as usize)
+        .name(opts.process_name)
+        .thread_stack_size(32 * 1024 * 1024)
+        .executors(executors)
+        .build()?;
+
+    collect_stats();
+    // Todo start scheduler server
+    match start_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
+        Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
+            "Scheduler errored: {:?}",
+            &*err
+        )))?,
+        Ok(_) => println!("Goodbye :)"),
+    };
+
+    Ok(())
+}
 struct ProcessOptions {
     process_name: String,
     task_executors: TaskRegistry,
@@ -183,10 +213,13 @@ fn collect_stats() {
     log::debug!("collecting stats disabled, to enable use feature flag: \"stats\"");
 }
 
-fn init_single_process_scheduler(
+async fn init_grpc_scheduler(
     cfg: sylklabs::core::Config,
     opts: ProcessOptions,
 ) -> Result<(), SchedulerError> {
+
+    debug!("configs dump: {:#?}", cfg);
+
     let registry = opts.task_executors;
 
     let executors = Arc::new(Mutex::new(registry));
@@ -200,6 +233,8 @@ fn init_single_process_scheduler(
 
     collect_stats();
 
+
+    // For examples
     // pool.execute(
     //     |args| println!("sanity check: {:#?}", args),
     //     ExecuteRequest {
@@ -222,7 +257,7 @@ fn init_single_process_scheduler(
     // }
 
     // Todo start scheduler server
-    match start_grpc_server(cfg.grpc_port, pool) {
+    match start_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
         Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
             "Scheduler errored: {:?}",
             &*err

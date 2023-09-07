@@ -1,0 +1,18 @@
+[INFO] Scheduler starting
+[DEBUG] Loaded configurations Config {
+    node_type: SingleProcess,
+    num_workers: 4,
+    grpc_port: 44880,
+}
+[INFO] [scheduler][0] worker starting
+[INFO] [scheduler][1] worker starting
+[INFO] [scheduler][2] worker starting
+[INFO] [scheduler][3] worker starting
+[DEBUG] registerd: task-1
+[DEBUG] registerd: task-2
+[DEBUG] collecting stats enabled
+[INFO] [scheduler][0] worker executing job -> 0
+[DEBUG] gRPC server started
+[DEBUG] server interrupted
+[DEBUG] [scheduler][1] disconnected; shutting down.
+[DEBUG] [scheduler][3] disconnected; shutting down.

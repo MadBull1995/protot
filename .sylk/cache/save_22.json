@@ -2,27 +2,6 @@
     "organization": {
         "domain": "sylklabs"
     },
-    "configs": {
-        "protoBasePath": "protos",
-        "host": "localhost",
-        "port": 44880,
-        "codeBasePath": "generated"
-    },
-    "sylkVersion": "0.4.0",
-    "project": {
-        "uri": "/Users/amitshmulevitch/proto-tasker",
-        "name": "proto-tasker",
-        "packageName": "prototasker",
-        "clients": [
-            {
-                "language": "python",
-                "outDir": "/Users/amitshmulevitch/proto-tasker/src/client/python"
-            }
-        ],
-        "server": {
-            "language": "python"
-        }
-    },
     "packages": {
         "sylklabs/scheduler/v1": {
             "name": "scheduler",
@@ -211,34 +190,6 @@
                     "tag": "scheduler_worker"
                 },
                 {
-                    "name": "TaskCompletion",
-                    "fullName": "sylklabs.scheduler.v1.TaskCompletion",
-                    "fields": [
-                        {
-                            "name": "task_id",
-                            "fullName": "sylklabs.scheduler.v1.TaskCompletion.task_id",
-                            "fieldType": "TYPE_STRING",
-                            "label": "LABEL_OPTIONAL",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 1
-                        },
-                        {
-                            "name": "state",
-                            "fullName": "sylklabs.scheduler.v1.TaskCompletion.state",
-                            "fieldType": "TYPE_ENUM",
-                            "label": "LABEL_OPTIONAL",
-                            "enumType": "sylklabs.core.TaskState",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 2
-                        }
-                    ],
-                    "type": "descriptor",
-                    "kind": "message",
-                    "tag": "scheduler_worker"
-                },
-                {
                     "name": "WorkerMessage",
                     "fullName": "sylklabs.scheduler.v1.WorkerMessage",
                     "fields": [
@@ -318,6 +269,34 @@
                                     "kind": "oneof"
                                 }
                             ]
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "scheduler_worker"
+                },
+                {
+                    "name": "TaskCompletion",
+                    "fullName": "sylklabs.scheduler.v1.TaskCompletion",
+                    "fields": [
+                        {
+                            "name": "task_id",
+                            "fullName": "sylklabs.scheduler.v1.TaskCompletion.task_id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 1
+                        },
+                        {
+                            "name": "state",
+                            "fullName": "sylklabs.scheduler.v1.TaskCompletion.state",
+                            "fieldType": "TYPE_ENUM",
+                            "label": "LABEL_OPTIONAL",
+                            "enumType": "sylklabs.core.TaskState",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
                         }
                     ],
                     "type": "descriptor",
@@ -475,15 +454,6 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 3
-                        },
-                        {
-                            "name": "graceful_timeout",
-                            "fullName": "sylklabs.core.Config.graceful_timeout",
-                            "fieldType": "TYPE_UINT64",
-                            "label": "LABEL_OPTIONAL",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 4
                         }
                     ],
                     "type": "descriptor",
@@ -555,6 +525,27 @@
             "dependencies": [
                 "google.protobuf"
             ]
+        }
+    },
+    "configs": {
+        "host": "localhost",
+        "port": 44880,
+        "protoBasePath": "protos",
+        "codeBasePath": "generated"
+    },
+    "sylkVersion": "0.4.0",
+    "project": {
+        "uri": "/Users/amitshmulevitch/proto-tasker",
+        "name": "proto-tasker",
+        "packageName": "prototasker",
+        "clients": [
+            {
+                "language": "python",
+                "outDir": "/Users/amitshmulevitch/proto-tasker/src/client/python"
+            }
+        ],
+        "server": {
+            "language": "python"
         }
     }
 }

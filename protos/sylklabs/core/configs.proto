@@ -10,6 +10,7 @@ message Config {
 	sylklabs.core.NodeType node_type = 1;
 	int32 num_workers = 2;
 	int32 grpc_port = 3;
+	uint64 graceful_timeout = 4;
 }
 
 

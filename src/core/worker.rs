@@ -225,7 +225,6 @@ impl Worker for LocalWorker {
         builder
             .spawn(move || {
                 log::info!("worker starting",);
-                {}
                 let mut total_time = Duration::new(0, 0);
                 let mut active_time = Duration::new(0, 0);
                 // Will spawn a new thread on panic unless it is canceled.

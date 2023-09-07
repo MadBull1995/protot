@@ -20,15 +20,33 @@ message RegistrationRequest {
 	string magic_cookie = 3;
 }
 
+message Ack {
+
+	sylklabs.scheduler.v1.WorkerChannelStatus status = 1;
+	string message = 2;
+}
+
+message Disconnect {
+
+	string message = 1;
+}
+
 message AssignTaskRequest {
 
 	sylklabs.core.Task task = 1;
+}
+
+message TaskCompletion {
+
+	string task_id = 1;
+	sylklabs.core.TaskState state = 2;
 }
 
 message WorkerMessage {
 
 	oneof worker_message_type {
 		sylklabs.scheduler.v1.RegistrationRequest registration = 1;
+		sylklabs.scheduler.v1.TaskCompletion completion = 2;
 	};
 }
 
@@ -36,6 +54,15 @@ message WorkerMessage {
 message SchedulerMessage {
 
 	oneof scheduler_message_type {
-		sylklabs.scheduler.v1.AssignTaskRequest assign_task = 1;
+		sylklabs.scheduler.v1.Ack ack = 1;
+		sylklabs.scheduler.v1.AssignTaskRequest assign_task = 2;
+		sylklabs.scheduler.v1.Disconnect disconnect = 3;
 	};
+}
+
+
+enum WorkerChannelStatus {
+	UNKNOWN_CHANNEL_STATUS = 0;
+	READY = 1;
+	CLOSED = 2;
 }

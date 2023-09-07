@@ -6,7 +6,7 @@ use std::{
         mpsc::{channel, Receiver, Sender},
         Arc, Condvar, Mutex,
     },
-    thread,
+    thread
 };
 
 use super::{
@@ -28,9 +28,29 @@ pub trait TaskExecutor: Send + Sync + 'static {
     fn execute(&self, args: ExecuteRequest);
 }
 
+// Trait for task execution
+#[tonic::async_trait(?Send)]
+pub trait AsyncTaskExecutor: Send + Sync + 'static {
+    async fn execute(&self, args: ExecuteRequest);
+}
+
 // Struct to hold task executions and their argument implementations
 pub struct TaskRegistry {
     registry: HashMap<String, Box<dyn TaskExecutor>>,
+}
+
+// Struct to hold task executions and their argument implementations
+pub struct GrpcWorkersRegistry {
+    registry: HashMap<String, Box<dyn AsyncTaskExecutor>>,
+}
+
+
+impl GrpcWorkersRegistry {
+    pub fn new() -> Self {
+        GrpcWorkersRegistry {
+            registry: HashMap::new()
+        }
+    }
 }
 
 impl Default for TaskRegistry {
@@ -221,6 +241,12 @@ impl Builder {
             workers,
         })
     }
+
+}
+
+
+pub struct GrpcWorkerPool {
+    execute_channel: Option<Sender<ExecuteRequest>>,
 }
 
 pub struct WorkerPool {
