@@ -78,9 +78,10 @@ fn register_metrics() {
 
 #[cfg(feature = "stats")]
 pub async fn start_metrics_server() -> Result<(), Box<dyn std::error::Error>> {
+    use log::info;
+
     register_metrics();
     async fn metrics(_req: HyperRequest<Body>) -> Result<HyperResponse<Body>, Infallible> {
-        println!("metrics scrape");
         let encoder = prometheus::TextEncoder::new();
         let metric_families = REGISTRY.gather(); // Use custom registry
         let mut buffer = vec![];
@@ -94,7 +95,7 @@ pub async fn start_metrics_server() -> Result<(), Box<dyn std::error::Error>> {
     let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(metrics)) });
     let metrics_server = HyperServer::bind(&metrics_addr).serve(make_svc);
 
-    println!("Metrics server started at http://{}", metrics_addr);
+    info!("Metrics server started at http://{}", metrics_addr);
 
     metrics_server.await?;
 

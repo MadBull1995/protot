@@ -79,12 +79,15 @@
 pub mod client;
 pub mod core;
 pub mod internal;
+pub mod data;
+
 mod server;
 mod utils;
-use crate::{core::worker_pool::{TaskExecutor, TaskRegistry}, server::start_single_process_grpc_server};
+use crate::{core::worker_pool::{TaskExecutor, TaskRegistry}, server::start_single_process_grpc_server, data::{DataStore, RedisDataStore}};
 pub use lazy_static::lazy_static;
-use log::{info, debug};
+use log::{info, debug, error};
 use server::start_scheduler_grpc_server;
+use tokio::sync::Mutex as AsyncMutex;
 
 use std::{
     sync::{Arc, Mutex},
@@ -116,7 +119,10 @@ pub async fn start(
                 debug!("Loaded configurations: {:?}", cfg,);
                 cfg
             }
-            Err(e) => panic!("errored: {:?}", e),
+            Err(e) => {
+                error!("Failed to load configuration: {:?}", e);
+                std::process::exit(1);
+            },
         },
     };
 
@@ -125,10 +131,19 @@ pub async fn start(
         ..Default::default()
     };
 
+    let cfg_data_store = cfgs.data_store.clone();
+    let data_store = match cfg_data_store.clone().unwrap().r#type {
+        0 => {
+            let data_store: Arc<AsyncMutex<RedisDataStore>> = Arc::new(AsyncMutex::new(RedisDataStore::new(&cfg_data_store.unwrap().host).await?));
+            data_store
+        },
+        _ => panic!("Unsupported data store type"),
+    }; 
+    
     match cfgs.node_type() {
         protot::core::NodeType::SingleProcess => init_single_process_grpc_scheduler(cfgs, opts).await,
         protot::core::NodeType::Scheduler => {
-            init_distributed_grpc_scheduler(cfgs, opts).await
+            init_distributed_grpc_scheduler(cfgs, opts, data_store).await
         },
         _ => Err(SchedulerError::SchedulerUnimplemented(format!(
             "Unimplemented node type {}",
@@ -159,6 +174,7 @@ fn prost_duration_to_std_duration(prost_duration: Option<prost_types::Duration>)
 async fn init_distributed_grpc_scheduler( 
     cfg: protot::core::Config,
     opts: ProcessOptions,
+    db: Arc<AsyncMutex<dyn data::DataStore>>,
 ) -> Result<(), SchedulerError> {
     let registry = opts.task_executors;
 
@@ -172,12 +188,16 @@ async fn init_distributed_grpc_scheduler(
         .build()?;
 
     collect_stats();
+
+
     // Todo start scheduler server
     match start_scheduler_grpc_server(
         cfg.grpc_port,
         pool,
         cfg.graceful_timeout,
-        prost_duration_to_std_duration(cfg.heartbeat_interval)
+        prost_duration_to_std_duration(cfg.heartbeat_interval),
+        None,
+        db
     ).await {
         Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
             "Scheduler errored: {:?}",

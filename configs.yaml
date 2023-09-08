@@ -1,8 +1,11 @@
 node_type: SCHEDULER
-num_workers: 4
+num_workers: 1
 grpc_port: 44880
 graceful_timeout: 30
 load_balancer: ROUND_ROBIN
 heartbeat_interval:
-  seconds: 5
+  seconds: 10
   nanos: 0
+data_store: 
+  type: REDIS
+  host: "redis://127.0.0.1/"

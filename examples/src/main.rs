@@ -27,7 +27,7 @@ use protot::{
     start,
 };
 use tokio::time::sleep;
-use tonic::Status;
+use tonic::{Status, Response};
 
 // Define you own task executor
 struct MyExecutor;
@@ -37,17 +37,24 @@ impl TaskExecutor for MyExecutor {
         println!("executed task");
     }
 }
-
 struct MyAsyncExecutor;
 
-#[async_trait(?Send)]
+#[async_trait]
 impl AsyncTaskExecutor for MyAsyncExecutor {
-    async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, Box<dyn Error>> {
-        println!("executed async task {:?}", args);
+    async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, ()> {
         
-        tokio::spawn(sleep(Duration::from_secs(10))).await?;
-
-        Ok(TaskCompletion { task_id: args.task.unwrap().id.clone(), state: TaskState::Pending.into() })
+        println!("executed async task {:?}", args);
+        // tokio::spawn returns a JoinHandle that is a Future.
+        // The spawned future is running in the background and you can await the JoinHandle whenever you're ready.
+        let join_handle = tokio::spawn(async {
+            tokio::time::sleep(Duration::from_secs(10)).await;
+        });
+         // Awaiting the join handle here to make sure the spawned task completes.
+        // If you wish, you can store it somewhere and await it later.
+        let _ = join_handle.await.map_err(|e| {
+            eprintln!("Failed to join spawned task: {}", e);
+        });
+        Ok(TaskCompletion { task_id: args.task.unwrap().id.clone(), state: TaskState::Pending.into(), execution_id: args.execution_id })
     }
 }
 

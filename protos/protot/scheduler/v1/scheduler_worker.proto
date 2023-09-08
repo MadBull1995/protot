@@ -49,6 +49,7 @@ message Disconnect {
 message AssignTaskRequest {
 
 	protot.core.Task task = 1;
+	string execution_id = 2;
 }
 
 message Pong {
@@ -60,6 +61,7 @@ message TaskCompletion {
 
 	string task_id = 1;
 	protot.core.TaskState state = 2;
+	string execution_id = 3;
 }
 
 message WorkerMessage {

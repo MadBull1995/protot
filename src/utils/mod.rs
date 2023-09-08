@@ -16,3 +16,13 @@ pub mod configs;
 pub mod error;
 pub mod logger;
 pub mod shared;
+
+/// Fetches the current timestamp.
+pub fn current_timestamp() -> i64 {
+    // Generate the current timestamp. This function can be more precise depending on your requirements.
+    let start = std::time::SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards");
+    since_the_epoch.as_secs() as i64
+}

@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_yaml;
 use std::fs;
-use crate::internal::protot::core::{self, Config};
+use crate::internal::protot::core::{self, Config, DataStore};
 
 use super::error::SchedulerError; // Import Serialize and Deserialize traits
 
@@ -34,6 +34,13 @@ pub enum NodeType {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[allow(non_camel_case_types)]
+pub enum DataStoreType {
+    #[serde(rename = "REDIS")]
+    Redis,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[allow(non_camel_case_types)]
 pub enum LoadBalancer {
     #[serde(rename = "ROUND_ROBIN")]
     RoundRobin,
@@ -43,6 +50,14 @@ pub enum LoadBalancer {
 pub struct WrapperDuration {
     pub seconds: i64,
     pub nanos: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)] // Use the derive macros for serialization and deserialization
+pub struct DataStoreWrapper {
+    #[serde(rename = "type")]
+    r#type: DataStoreType,
+    #[serde(rename = "host")]
+    host: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)] // Use the derive macros for serialization and deserialization
@@ -59,6 +74,8 @@ pub struct SerdeConfig {
     load_balancer: LoadBalancer,
     #[serde(rename = "heartbeat_interval")]
     heartbeat_interval: Option<WrapperDuration>,
+    #[serde(rename = "data_store")]
+    data_store: DataStoreWrapper,
 }
 
 #[allow(unused)]
@@ -116,7 +133,7 @@ fn deserialize_from_yaml(yaml: &str) -> Result<SerdeConfig, Box<dyn std::error::
 pub fn config_load(path: String) -> Result<Config, SchedulerError> {
     // Load the content of your JSON or YAML file
     let content = fs::read_to_string(&path).map_err(|e| {
-        SchedulerError::ConfigLoadError(format!("failed to load configurations: {:?}", e))
+        SchedulerError::ConfigLoadError(format!("failed to load configurations at: {} {:?}", path, e))
     })?;
 
     // Determine the file format based on the extension
@@ -157,6 +174,12 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
             LoadBalancer::RoundRobin => core::LoadBalancer::RoundRobin.into(),
         },
         heartbeat_interval: heartbeat_interval,
+        data_store: Some(DataStore {
+            r#type: match  config.data_store.r#type {
+                DataStoreType::Redis => core::DataStoreType::Redis.into(),
+            },
+            host:  config.data_store.host
+        })
     };
 
     Ok(cfg)

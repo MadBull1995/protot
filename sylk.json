@@ -58,6 +58,34 @@
                     "tag": "task"
                 },
                 {
+                    "name": "DataStore",
+                    "fullName": "protot.core.DataStore",
+                    "fields": [
+                        {
+                            "name": "type",
+                            "fullName": "protot.core.DataStore.type",
+                            "fieldType": "TYPE_ENUM",
+                            "label": "LABEL_OPTIONAL",
+                            "enumType": "protot.core.DataStoreType",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 1
+                        },
+                        {
+                            "name": "host",
+                            "fullName": "protot.core.DataStoreType.host",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "configs"
+                },
+                {
                     "name": "Config",
                     "fullName": "protot.core.Config",
                     "fields": [
@@ -117,6 +145,16 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 6
+                        },
+                        {
+                            "name": "data_store",
+                            "fullName": "protot.core.Config.data_store",
+                            "fieldType": "TYPE_MESSAGE",
+                            "label": "LABEL_OPTIONAL",
+                            "messageType": "protot.core.DataStore",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 7
                         }
                     ],
                     "type": "descriptor",
@@ -132,6 +170,21 @@
                         {
                             "name": "ROUND_ROBIN",
                             "fullName": "protot.core.LoadBalancer.ROUND_ROBIN",
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "enum",
+                    "tag": "configs"
+                },
+                {
+                    "name": "DataStoreType",
+                    "fullName": "protot.core.DataStoreType",
+                    "values": [
+                        {
+                            "name": "REDIS",
+                            "fullName": "protot.core.DataStoreType.REDIS",
                             "type": "descriptor",
                             "kind": "enum_value"
                         }
@@ -265,6 +318,15 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 2
+                        },
+                        {
+                            "name": "execution_id",
+                            "fullName": "protot.scheduler.v1.ExecuteResponse.execution_id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 3
                         }
                     ],
                     "type": "descriptor",
@@ -283,6 +345,15 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
+                        },
+                        {
+                            "name": "execution_id",
+                            "fullName": "protot.scheduler.v1.ExecuteRequest.execution_id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
                         }
                     ],
                     "type": "descriptor",
@@ -384,6 +455,15 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
+                        },
+                        {
+                            "name": "execution_id",
+                            "fullName": "protot.scheduler.v1.AssignTaskRequest.execution_id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
                         }
                     ],
                     "type": "descriptor",
@@ -431,6 +511,15 @@
                             "type": "descriptor",
                             "kind": "field",
                             "index": 2
+                        },
+                        {
+                            "name": "execution_id",
+                            "fullName": "protot.scheduler.v1.TaskCompletion.execution_id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 3
                         }
                     ],
                     "type": "descriptor",

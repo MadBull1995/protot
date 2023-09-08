@@ -24,8 +24,9 @@ use std::{
 };
 use std::future::Future;
 use tokio_util::sync::CancellationToken;
+use uuid::Uuid;
 
-use crate::{internal::protot::{scheduler::v1::{Ack, WorkerChannelStatus, worker_message::{self, WorkerMessageType}}, core::NodeType}, core::{grpc_executor::GrpcSharedState, load_balancer::{LoadBalancer, RoundRobinBalancer}}};
+use crate::{internal::protot::{scheduler::v1::{Ack, WorkerChannelStatus, worker_message::{self, WorkerMessageType}}, core::NodeType}, core::{grpc_executor::GrpcSharedState, load_balancer::{LoadBalancer, RoundRobinBalancer}}, data::{DataStore, self}};
 #[allow(unused_imports)]
 use crate::{
     core::worker_pool::{self, WorkerPool},
@@ -53,100 +54,52 @@ use tokio_stream::wrappers::ReceiverStream; // Import the ReceiverStream type
 use tonic::{transport::Server, Request, Response, Status};
 use tonic_types::{ErrorDetails, StatusExt};
 
+type CommunicateStreamType = Pin<Box<dyn Stream<Item = Result<SchedulerMessage, Status>> + Send>>;
+type WorkerChannels = Arc<Mutex<HashMap<String, (Sender<Result<SchedulerMessage, Status>>, Sender<()>)>>>;
+
+
 // Implement the gRPC service
 // #[derive(Default)]
 pub struct SchedulerServer<B: LoadBalancer> {
     shared_state: Arc<GrpcSharedState<B>>,
+    data_layer: Arc<Mutex<dyn DataStore>>,
 }
 
 impl<B: LoadBalancer> SchedulerServer<B> {
-    pub fn new(shared_state: Arc<GrpcSharedState<B>>) -> Self {
-        Self { shared_state }
+    pub fn new(shared_state: Arc<GrpcSharedState<B>>, data_layer: Arc<Mutex<dyn DataStore>>) -> Self {
+        Self { shared_state , data_layer }
     }
 }
 
 #[tonic::async_trait]
 impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
-    type CommunicateStream = Pin<Box<dyn Stream<Item = Result<SchedulerMessage, Status>> + Send>>;
+    type CommunicateStream = CommunicateStreamType;
 
     async fn communicate(
         &self,
         request: Request<tonic::Streaming<WorkerMessage>>,
     ) -> Result<Response<Self::CommunicateStream>, Status> {
-        let (tx, rx) = tokio::sync::mpsc::channel(32);
+        
+        let (tx, rx) = tokio::sync::mpsc::channel(self.shared_state.max_queue_size());
         let (tx_cancel,mut rx_cancel) = tokio::sync::mpsc::channel::<()>(1);
         let tx_binding = tx.clone();
 
         let shared_state = self.shared_state.clone();
         // Spawn a new task to process incoming messages and send responses
         tokio::spawn(async move {
-            let mut stream = request.into_inner();
-            let mut registered_worker_id: Option<String> = None;  // Add this line
 
-            while let Some(worker_message) = stream.next().await {
-                match worker_message {
-                    Ok(message) => {
-                        let response = match message.worker_message_type {
-                            Some(WorkerMessageType::Heartbeat(pong)) => {
-                                let binding = registered_worker_id.clone();
-                                debug!("[{}] Got heartbeat from worker: {:?}", binding.clone().unwrap(), pong);
-                                if binding.is_some() {
-                                    let shared_heartbeat = shared_state.worker_heartbeat.clone();  // assuming shared_data contains worker_heartbeat
-                                    let mut heartbeats = shared_heartbeat.lock().await;
-                                    heartbeats.insert(binding.unwrap().clone(), Instant::now());
-                                }
-                                SchedulerMessage::default()
-                            }
-                            Some(WorkerMessageType::Completion(task_completion)) => {
-                                info!("got task completion event: {:?}", task_completion);
-                                SchedulerMessage::default()
-                            }
-                            Some(WorkerMessageType::Registration(registration_request)) => {
-                                info!("worker registration: {:?}", registration_request);
-                                let worker_id = registration_request.worker_id.clone();
-                                let mut channels = shared_state.grpc_worker_channels.lock().await;
-                                channels.insert(worker_id.clone(), (tx.clone(), tx_cancel.clone()));
-                                registered_worker_id = Some(worker_id.clone());
-                                SchedulerMessage {
-                                    scheduler_message_type: Some(
-                                        scheduler_message::SchedulerMessageType::Ack(
-                                            Ack {
-                                                message: "worker connected".to_string(),
-                                                status: WorkerChannelStatus::Ready.into()
-                                            }
-                                        ),
-                                    ),
-                                }
-                            },
-                            _ => {
-                                let status = Status::aborted("Unknown worker message or missing data");
-                                if tx.send(Err(status)).await.is_err() {
-                                    error!("errored while sending worker error to scheduler");
-                                }
-                                SchedulerMessage::default()
-                            }
-                        };
-
-                        // Process the worker message and create a response
-                        if response.scheduler_message_type.is_some() {
-                            if tx.send(Ok(response)).await.is_err() {
-                                error!("{:?}", "errored");
-                                // TODO
-                                // Handle error sending response
-                            }
-                        }
-                    }
-                    Err(status) => {
-                        error!("{:?}: {:?}", status, status.metadata());
-                        if let Some(worker_id) = registered_worker_id.take() {  // Use the stored worker ID
-                            let mut channels = shared_state.grpc_worker_channels.lock().await;
-                            channels.remove(&worker_id);
-                        }
-                    }
-                }
+            let result = Self::handle_communicate(
+                shared_state,
+                tx.clone(),
+                tx_cancel.clone(),
+                request.into_inner()
+            ).await;
+            
+            if let Err(e) = result {
+                // Log the error, or otherwise handle it
+                error!("Error handling communication: {}", e);
             }
-            // This line isn't necessary in newer versions of tokio
-            // tx.close_channel();
+
         });
 
         // Waiting for cancellation events for gRPC server
@@ -166,6 +119,81 @@ impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
     }
 }
 
+impl<B: LoadBalancer> SchedulerServer<B> {
+    async fn handle_communicate(
+        shared_state: Arc<GrpcSharedState<B>>, // replace SharedState with the actual type
+        tx: Sender<Result<SchedulerMessage, Status>>,
+        tx_cancel: Sender<()>,
+        mut stream: tonic::Streaming<WorkerMessage>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut registered_worker_id: Option<String> = None;  // Add this line
+
+        while let Some(worker_message) = stream.next().await {
+            match worker_message {
+                Ok(message) => {
+                    let response = match message.worker_message_type {
+                        Some(WorkerMessageType::Heartbeat(pong)) => {
+                            let binding = registered_worker_id.clone();
+                            debug!("[{}] Got heartbeat from worker: {:?}", binding.clone().unwrap(), pong);
+                            if binding.is_some() {
+                                let shared_heartbeat = shared_state.worker_heartbeat.clone();  // assuming shared_data contains worker_heartbeat
+                                let mut heartbeats = shared_heartbeat.lock().await;
+                                heartbeats.insert(binding.unwrap().clone(), Instant::now());
+                            }
+                            SchedulerMessage::default()
+                        }
+                        Some(WorkerMessageType::Completion(task_completion)) => {
+                            info!("got task completion event: {:?}", task_completion);
+                            SchedulerMessage::default()
+                        }
+                        Some(WorkerMessageType::Registration(registration_request)) => {
+                            info!("worker registration: {:?}", registration_request);
+                            let worker_id = registration_request.worker_id.clone();
+                            let mut channels = shared_state.grpc_worker_channels.lock().await;
+                            channels.insert(worker_id.clone(), (tx.clone(), tx_cancel.clone()));
+                            registered_worker_id = Some(worker_id.clone());
+                            SchedulerMessage {
+                                scheduler_message_type: Some(
+                                    scheduler_message::SchedulerMessageType::Ack(
+                                        Ack {
+                                            message: "worker connected".to_string(),
+                                            status: WorkerChannelStatus::Ready.into()
+                                        }
+                                    ),
+                                ),
+                            }
+                        },
+                        _ => {
+                            let status = Status::aborted("Unknown worker message or missing data");
+                            if tx.send(Err(status)).await.is_err() {
+                                error!("errored while sending worker error to scheduler");
+                            }
+                            SchedulerMessage::default()
+                        }
+                    };
+
+                    // Process the worker message and create a response
+                    if response.scheduler_message_type.is_some() {
+                        if tx.send(Ok(response)).await.is_err() {
+                            error!("{:?}", "errored");
+                            // TODO
+                            // Handle error sending response
+                        }
+                    }
+                }
+                Err(status) => {
+                    error!("{:?}: {:?}", status, status.metadata());
+                    if let Some(worker_id) = registered_worker_id.take() {  // Use the stored worker ID
+                        let mut channels = shared_state.grpc_worker_channels.lock().await;
+                        channels.remove(&worker_id);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 async fn cancel_client(tx: Sender<Result<SchedulerMessage, Status>>, rx_cancel:&mut Receiver<()>) {
     rx_cancel.recv().await;
     let status = Status::aborted("Aborting channel");
@@ -175,7 +203,7 @@ async fn cancel_client(tx: Sender<Result<SchedulerMessage, Status>>, rx_cancel:&
 }
 
 pub struct SharedData {
-    worker_pool: Arc<Mutex<WorkerPool>>,
+    pub(crate) worker_pool: Arc<Mutex<WorkerPool>>,
     pub worker_heartbeat: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
@@ -186,6 +214,8 @@ pub async fn start_scheduler_grpc_server(
     pool: worker_pool::WorkerPool,
     graceful_timeout: u64,
     heartbeat_interval: std::time::Duration,
+    max_task_queue: Option<usize>,
+    data_layer: Arc<Mutex<dyn data::DataStore>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "stats")]
     {
@@ -213,14 +243,14 @@ pub async fn start_scheduler_grpc_server(
 
     // let binding_rx = rx.clone();
     // SchedulerWorkerService - for communication of workers to scheduler
-    let grpc_state = GrpcSharedState::new(RoundRobinBalancer::new());
+    let grpc_state = GrpcSharedState::new(RoundRobinBalancer::new(), max_task_queue);
     let shared_grpc_state = Arc::new(grpc_state);
-    let scheduler_worker_svc = SchedulerServer::new(shared_grpc_state.clone());
+    let scheduler_worker_svc = SchedulerServer::new(shared_grpc_state.clone(), data_layer.clone());
     let svc = SchedulerWorkerServiceServer::new(scheduler_worker_svc);
 
     // SchedulerService - admin service for communicating with scheduler by clients.
     let admin_service =
-        SchedulerServiceServer::new(SchedulerAdminService::new(shared_data.clone(), Some(shared_grpc_state.clone())));
+        SchedulerServiceServer::new(SchedulerAdminService::new(shared_data.clone(), Some(shared_grpc_state.clone()), data_layer));
 
     // This AtomicBool will be used to track if the interrupt was previously received
     let interrupt_received = Arc::new(AtomicBool::new(false));
@@ -232,22 +262,12 @@ pub async fn start_scheduler_grpc_server(
             let mut worker_channels = grpc_binding.grpc_worker_channels.lock().await;
     
             for (worker_id, worker_channel) in worker_channels.iter_mut() {
-                // Assuming send_heartbeat is an async function in your worker's gRPC API
-                worker_channel.0.send(Ok(SchedulerMessage {
+                debug!("sending heartbeat to: {}", worker_id);
+                let _ = worker_channel.0.send(Ok(SchedulerMessage {
                     scheduler_message_type: Some(
                         scheduler_message::SchedulerMessageType::Heartbeat(())
                     )
                 })).await;
-    
-                // match result {
-                //     Ok(_) => {
-                //         let mut heartbeats = shared_heartbeat.lock().await;
-                //         heartbeats.insert(worker_id.clone(), Instant::now());
-                //     }
-                //     Err(err) => {
-                //         eprintln!("Failed to receive heartbeat from worker {}: {:?}", worker_id, err);
-                //     }
-                // }
             }
         }
     });
@@ -271,7 +291,7 @@ pub async fn start_scheduler_grpc_server(
                 log::debug!("server interrupted");
 
                 interrupt_received.store(true, Ordering::Relaxed);
-
+                
                 let pool = cloned_pool.clone();
                 let grpc = shared_grpc_state.clone();
                 let wc = grpc.grpc_worker_channels.lock().await;
@@ -400,11 +420,12 @@ pub async fn start_single_process_grpc_server(
 pub struct SchedulerAdminService<B: LoadBalancer> {
     shared_data: Arc<SharedData>,
     shared_grpc_state: Option<Arc<GrpcSharedState<B>>>,
+    data_layer: Arc<Mutex<dyn DataStore>>,
 }
 
 impl<B: LoadBalancer> SchedulerAdminService<B> {
-    fn new(shared_data: Arc<SharedData>, shared_grpc_state: Option<Arc<GrpcSharedState<B>>> ) -> Self {
-        Self { shared_data , shared_grpc_state }
+    fn new(shared_data: Arc<SharedData>, shared_grpc_state: Option<Arc<GrpcSharedState<B>>>, data_layer: Arc<Mutex<dyn DataStore>> ) -> Self {
+        Self { shared_data , shared_grpc_state, data_layer }
     }
 }
 
@@ -416,62 +437,45 @@ impl<B: LoadBalancer> SchedulerService for SchedulerAdminService<B> {
         request: Request<ExecuteRequest>,
     ) -> Result<Response<ExecuteResponse>, Status> {
         let shared_data = self.shared_data.as_ref().clone();
-        let req = request.into_inner().clone();
+        let req = request.into_inner();
         let task_name = req.task.as_ref().unwrap().id.clone();
         println!("task->{}", task_name);
-
+        let db = self.data_layer.lock().await;
+        let cloned_task = req.clone();
+        db.add_task_execution(cloned_task).await;
+        // let db = self.data_layer.lock().await;
+        // db.add_task_execution(req).await;
         match &self.shared_grpc_state {
             Some(sd) => {
                 info!("dispatching task to workers");
                 let sm = SchedulerMessage {
                     scheduler_message_type: Some(
                         scheduler_message::SchedulerMessageType::AssignTask(
-                            AssignTaskRequest { task: req.task }
+                            AssignTaskRequest { task: req.task, execution_id: Uuid::new_v4().to_string()  }
                         )
                     )
                 };
                 sd.distribute_task(sm).await
             }
             None => {
-                // Clone the shared data for the closure
-                let cloned_shared = shared_data.worker_pool.as_ref().lock().await;
-        
-                // Capture the 'o' value from the lock before the async block
-                let o_clone = { cloned_shared.executors.clone() };
-        
-                // Execute the logic using the cloned shared data and the cloned request
-                match cloned_shared.execute(
-                    move |args| {
-                        let logic = o_clone.lock().unwrap();
-                        log::debug!("executing task: {}", task_name,);
-                        logic.get_executor(&task_name).unwrap().execute(args);
-                    },
-                    req,
-                ) {
-                    Ok(res) => Ok(Response::new(ExecuteResponse {
-                        ..Default::default()
-                    })),
-                    Err(err) => {
-                        let mut err_details = ErrorDetails::new();
-                        err_details
-                            .add_precondition_failure_violation(
-                                "EXECUTOR",
-                                "WorkerPool",
-                                format!("failed to execute task on worker pool: {:?}", err),
-                            )
-                            .add_help_link("documentation", "https://protot.io/docs/help")
-                            .set_localized_message("en-US", "error executing task");
-        
-                        // Generate error status
-                        let status = Status::with_error_details(
-                            tonic::Code::FailedPrecondition,
-                            "request contains invalid arguments",
-                            err_details,
-                        );
-        
-                        Err(status)
-                    }
-                }
+                let mut err_details = ErrorDetails::new();
+                err_details
+                    .add_precondition_failure_violation(
+                        "EXECUTOR",
+                        "WorkerPool",
+                        "failed to execute task on gRPC worker pool",
+                    )
+                    .add_help_link("documentation", "https://protot.io/docs/help")
+                    .set_localized_message("en-US", "error executing task");
+
+                // Generate error status
+                let status = Status::with_error_details(
+                    tonic::Code::FailedPrecondition,
+                    "request contains invalid arguments",
+                    err_details,
+                );
+
+                Err(status)
             }
         }
 
@@ -482,7 +486,6 @@ impl<B: LoadBalancer> SchedulerService for SchedulerAdminService<B> {
         &self,
         request: Request<ScheduleRequest>,
     ) -> Result<Response<ScheduleResponse>, Status> {
-        let shared_data = self.shared_data.clone();
         let mut err_details = ErrorDetails::new();
         err_details
             .add_precondition_failure_violation(

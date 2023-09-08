@@ -28,6 +28,7 @@ pub struct GrpcSharedState<B: LoadBalancer> {
     pub grpc_worker_channels: Mutex<GrpcWorkerChannels>,
     balancer: Mutex<B>,
     pub worker_heartbeat: Arc<Mutex<HashMap<String, Instant>>>,
+    max_task_queue: usize,
 }
 
 #[async_trait]
@@ -36,29 +37,22 @@ trait DropClient {
 }
 
 impl<B: LoadBalancer> GrpcSharedState<B> {
-    pub async fn distribute_task(&self, task: SchedulerMessage) -> Result<Response<ExecuteResponse>, Status> {
-        let worker_channels = self.grpc_worker_channels.lock().await;
 
-        let mut balancer = self.balancer.lock().await;
-        if let Some(key) = balancer.select_worker(&worker_channels).await {
-            let (sender, _) = worker_channels.get(&key).unwrap();
-            if sender.send(Ok(task)).await.is_err() {
-                error!("Error while dispatching task");
-            };
-            return Ok(Response::new(ExecuteResponse::default()))
-        } else {
-            return Err(Status::aborted("No available workers"));
-        }
-    }
-}
-
-impl<B: LoadBalancer> GrpcSharedState<B> {
-    pub fn new(balancer: B) -> Self {
+    pub fn new(balancer: B, max_task_queue: Option<usize>) -> Self {
+        let max_queue_size = match max_task_queue {
+            None => {100},
+            Some(queue_size) => {queue_size}
+        };
         Self {
             grpc_worker_channels: Mutex::new(HashMap::new()),
             balancer: Mutex::new(balancer),
             worker_heartbeat: Arc::new(Mutex::new(HashMap::new())),
+            max_task_queue: max_queue_size,
         }
+    }
+
+    pub fn max_queue_size(&self) -> usize {
+        self.max_task_queue
     }
 
     pub async fn drop_workers(self) {
@@ -68,6 +62,32 @@ impl<B: LoadBalancer> GrpcSharedState<B> {
             if c.1.send(()).await.is_err() {
                 println!("error while closing worker connection: {}", w);
             };
+        }
+    }
+
+    pub async fn distribute_task(&self, task: SchedulerMessage) -> Result<Response<ExecuteResponse>, Status> {
+        let worker_channels = self.grpc_worker_channels.lock().await;
+
+        let mut balancer = self.balancer.lock().await;
+        if let Some(key) = balancer.select_worker(&worker_channels).await {
+            let (sender, _) = worker_channels.get(&key).unwrap();
+            let t = task.clone();
+            if sender.send(Ok(task)).await.is_err() {
+                error!("Error while dispatching task");
+            };
+            let (task_id, execution_id) = match t.scheduler_message_type {
+                Some(scheduler_message::SchedulerMessageType::AssignTask(task)) => {
+                    (task.task.unwrap().id, task.execution_id)
+                }
+                _ => { ("UnknownTaskId".to_string(), "UnknownExecutionId".to_string()) }
+            };
+            return Ok(Response::new(ExecuteResponse{
+                execution_id,
+                task_id,
+                state: TaskState::Pending.into(),
+            }))
+        } else {
+            return Err(Status::aborted("No available workers"));
         }
     }
 }

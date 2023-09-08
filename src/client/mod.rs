@@ -14,25 +14,21 @@
 
 use std::{
     sync::Arc,
-    error::Error,
+    error::Error
 };
-use async_trait::async_trait;
 use log::debug;
 use tokio::{
-    sync::{mpsc, Mutex}, time::sleep,
+    sync::mpsc,
 };
-use tokio_stream::StreamExt;
-use std::time::Duration;
-use tonic::{Request, Response, Status, transport::Channel };
+use tonic::Request;
 use crate::{internal::protot::{
-    core::{Task, TaskState},
+    core::TaskState,
     scheduler::v1::{
         ExecuteRequest,
-        ExecuteResponse,
         scheduler_worker_service_client::SchedulerWorkerServiceClient,
-        scheduler_service_client::SchedulerServiceClient, WorkerMessage, RegistrationRequest, worker_message, TaskCompletion, scheduler_message, Pong
+        WorkerMessage, RegistrationRequest, worker_message, TaskCompletion, scheduler_message, Pong, SchedulerMessage, AssignTaskRequest
     }, metrics::v1::WorkerMetrics
-}, core::worker_pool::{AsyncTaskExecutor, GrpcWorkersRegistry},
+}, core::worker_pool::GrpcWorkersRegistry,
 };
 
 // #[macro_export]
@@ -69,8 +65,9 @@ use crate::{internal::protot::{
 // }
 
 pub struct GrpcWorker {
-    registeration_details: RegistrationRequest,
+    registeration_details: Arc<RegistrationRequest>,
     registry: GrpcWorkersRegistry,
+    // shared_data: Arc<SharedData>,
 }
 
 impl Default for GrpcWorker {
@@ -110,7 +107,7 @@ impl GrpcWorkerBuilder {
 
     pub fn build(self) -> GrpcWorker {
         GrpcWorker {
-            registeration_details: RegistrationRequest {
+            registeration_details:Arc::new(RegistrationRequest {
                 worker_id: self.worker_id
                     .clone()
                     .unwrap_or("SomeWorkerId".to_string()),
@@ -118,7 +115,7 @@ impl GrpcWorkerBuilder {
                 magic_cookie: self.cookie
                     .clone()
                     .unwrap_or("SomeSecert".to_string())
-            },
+            }),
             registry: self.registry.unwrap_or(GrpcWorkersRegistry::new()),
         }
     }
@@ -126,65 +123,84 @@ impl GrpcWorkerBuilder {
 
 impl GrpcWorker {
     
-    pub async fn communicate(&self) -> Result<(), Box<dyn Error>>  {
+    pub async fn communicate(self) -> Result<(), Box<dyn Error>>  {
         let mut client = SchedulerWorkerServiceClient::connect("http://0.0.0.0:44880").await?;
-        let (tx,mut rx) = mpsc::channel::<WorkerMessage>(32);
-        let binding = self.registeration_details.clone();
         
+        let (task_tx, mut task_rx) = mpsc::channel::<AssignTaskRequest>(1);  // Task is your custom type representing a task.
+        let (completion_tx, mut completion_rx) = mpsc::channel::<WorkerMessage>(1);
+        
+        let binding_tx_complete = completion_tx.clone();
+        let binding = self.registeration_details.clone();
+        tokio::spawn(async move {
+            while let Some(task) = task_rx.recv().await {
+                let bind = task.task.clone();
+                let executor = self.registry.get_executor(&bind.unwrap().id);
+                match executor {
+                    Ok(operation) => {
+                        // Here perform the actual task execution.
+                        let execution_id = task.execution_id.clone();
+                        let execute_req = ExecuteRequest { task: task.task.clone(), execution_id: execution_id };
+                        match operation.execute(execute_req).await {
+                            Ok(completion) => {
+                                // Send task response to the communicate loop
+                                let response = WorkerMessage {
+                                    worker_message_type: Some(
+                                        worker_message::WorkerMessageType::Completion(completion)
+                                    ),
+                                };
+                                completion_tx.send(response).await.expect("send completion");
+                            }
+                            Err(err) => {
+                                eprintln!("Failed to execute task: {:?}", err);
+                            }
+                        }
+                    },
+                    Err(err) => {
+                        println!("Error: {:?}", err);
+                        let execution_id = task.execution_id;
+                        completion_tx.send(WorkerMessage { worker_message_type: Some(
+                            worker_message::WorkerMessageType::Completion(
+                                TaskCompletion { 
+                                    task_id: task.task.unwrap().id,
+                                    state: TaskState::Fail.into(),
+                                    execution_id: execution_id
+                                }
+                            )
+                        ) }).await.expect("send completion");
+                    }
+                }
+            }
+        });
+
+        // Create the outbound stream for gRPC.
+        let t = Arc::clone(&binding);
         let outbound = async_stream::stream! {
+            // worker registration code
             let register = WorkerMessage {
                 worker_message_type: Some(
                     worker_message::WorkerMessageType::Registration(
-                        binding
+                        (*t).clone()
                     )
                 )
             };
             yield register;
-            
-            loop {
-                let t = rx.recv().await;
-                if !t.is_none() {
-                    yield t.unwrap();
-                } else {
-                    break;
-                }
+            // Loop to forward completions from worker task to gRPC.
+            while let Some(completion) = completion_rx.recv().await {
+                yield completion;
             }
         };
     
         let response = client.communicate(Request::new(outbound)).await?;
-        let mut inbound = response.into_inner();
-        let binding = tx.clone();
+        let mut inbound: tonic::Streaming<SchedulerMessage> = response.into_inner();
         while let Some(scheduler_msg) = inbound.message().await? {
             match scheduler_msg.scheduler_message_type {
                 Some(msg) => {
                     match msg {
                         scheduler_message::SchedulerMessageType::AssignTask(t) => {
-                            let bind = t.task.clone();
-                            // println!("executing task: {:?}", bind.unwrap().id);
-                            let executor = self.registry.get_executor(&bind.unwrap().id);
-                            match executor {
-                                Ok(operation) => {
-
-                                    match operation.execute(ExecuteRequest { task: t.task.clone() }).await {
-                                        Ok(completion) => {
-                                            // Sending task response to the communicate loop
-                                            let response = WorkerMessage {
-                                                worker_message_type: Some(
-                                                    worker_message::WorkerMessageType::Completion(
-                                                        completion.clone()
-                                                    )
-                                                )
-                                            };
-                                            binding.send(response).await?;
-                                        }
-                                        Err(err) => {
-                                            panic!("failed to execute task: {:?}", err);
-                                        }
-                                    }
-                                    
-                                },
-                                Err(err) => Err(err)?
-                            }
+                            println!("new incoming task");
+                            
+                            task_tx.send(t).await.expect("send task");
+                            
                         },
                         scheduler_message::SchedulerMessageType::Disconnect(disconnect) => {
                             println!("disconnecting worker: {:?}", disconnect);
@@ -194,7 +210,7 @@ impl GrpcWorker {
                         }
                         scheduler_message::SchedulerMessageType::Heartbeat(_) => {
                             debug!("got heartbeat from scheduler");
-                            binding.send(WorkerMessage { worker_message_type: Some(
+                            binding_tx_complete.send(WorkerMessage { worker_message_type: Some(
                                 worker_message::WorkerMessageType::Heartbeat(
                                     Pong {
                                         metrics: Some(
@@ -211,7 +227,7 @@ impl GrpcWorker {
                 }
                 None => println!("invalid scheduler message"),
             }
-           
+
             ()
         }
         Ok(())

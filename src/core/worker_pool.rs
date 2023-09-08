@@ -24,7 +24,8 @@ use std::{
 };
 
 use async_trait::async_trait;
-use tonic::Status;
+use futures::Future;
+use tonic::{Status, Response};
 
 use super::{
     job::Job,
@@ -46,9 +47,9 @@ pub trait TaskExecutor: Send + Sync + 'static {
 }
 
 // Trait for task execution
-#[async_trait(?Send)]
+#[async_trait]
 pub trait AsyncTaskExecutor: Send + Sync + 'static {
-    async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, Box<dyn Error>>;
+    async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, ()>;
 }
 
 // Struct to hold task executions and their argument implementations
@@ -319,7 +320,7 @@ impl WorkerPool {
             ))?,
         };
         task.id = job_count.to_string();
-        let request = ExecuteRequest { task: Some(task) };
+        let request = ExecuteRequest { task: Some(task), execution_id: args.execution_id.clone()  };
 
         #[cfg(feature = "stats")]
         increment_task(WorkerPoolTaskType::Queued);
@@ -341,6 +342,19 @@ impl WorkerPool {
         }
 
         Ok(())
+    }
+
+    pub fn execute_async<F, Fut>(&self, job: F, args: ExecuteRequest) -> Result<(), SchedulerError>
+    where
+        F: FnOnce(ExecuteRequest) -> Fut + Send + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let job_wrapper = move |args| {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+            runtime.block_on(job(args))
+        };
+
+        self.execute(job_wrapper, args)
     }
 
     pub fn queued_count(&self) -> usize {

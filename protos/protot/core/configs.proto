@@ -20,6 +20,12 @@ package protot.core;
 
 import "google/protobuf/duration.proto";
 
+message DataStore {
+
+	protot.core.DataStoreType type = 1;
+	string host = 2;
+}
+
 message Config {
 
 	protot.core.NodeType node_type = 1;
@@ -28,11 +34,16 @@ message Config {
 	uint64 graceful_timeout = 4;
 	protot.core.LoadBalancer load_balancer = 5;
 	google.protobuf.Duration heartbeat_interval = 6;
+	protot.core.DataStore data_store = 7;
 }
 
 
 enum LoadBalancer {
 	ROUND_ROBIN = 0;
+}
+
+enum DataStoreType {
+	REDIS = 0;
 }
 
 // The possible node types for proto tasker process

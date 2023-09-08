@@ -39,9 +39,11 @@ message ExecuteResponse {
 
 	string task_id = 1;
 	protot.core.TaskState state = 2;
+	string execution_id = 3;
 }
 
 message ExecuteRequest {
 
 	protot.core.Task task = 1;
+	string execution_id = 2;
 }
