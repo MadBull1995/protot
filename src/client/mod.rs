@@ -1,9 +1,23 @@
+// Copyright 2023 The ProtoT Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use std::{
     sync::Arc,
     error::Error,
 };
 use async_trait::async_trait;
+use log::debug;
 use tokio::{
     sync::{mpsc, Mutex}, time::sleep,
 };
@@ -16,8 +30,8 @@ use crate::{internal::protot::{
         ExecuteRequest,
         ExecuteResponse,
         scheduler_worker_service_client::SchedulerWorkerServiceClient,
-        scheduler_service_client::SchedulerServiceClient, WorkerMessage, RegistrationRequest, worker_message, TaskCompletion, scheduler_message
-    }
+        scheduler_service_client::SchedulerServiceClient, WorkerMessage, RegistrationRequest, worker_message, TaskCompletion, scheduler_message, Pong
+    }, metrics::v1::WorkerMetrics
 }, core::worker_pool::{AsyncTaskExecutor, GrpcWorkersRegistry},
 };
 
@@ -114,7 +128,7 @@ impl GrpcWorker {
     
     pub async fn communicate(&self) -> Result<(), Box<dyn Error>>  {
         let mut client = SchedulerWorkerServiceClient::connect("http://0.0.0.0:44880").await?;
-        let (tx,mut rx) = mpsc::channel::<TaskCompletion>(32);
+        let (tx,mut rx) = mpsc::channel::<WorkerMessage>(32);
         let binding = self.registeration_details.clone();
         
         let outbound = async_stream::stream! {
@@ -130,14 +144,7 @@ impl GrpcWorker {
             loop {
                 let t = rx.recv().await;
                 if !t.is_none() {
-                    let response = WorkerMessage {
-                        worker_message_type: Some(
-                            worker_message::WorkerMessageType::Completion(
-                                t.unwrap()
-                            )
-                        )
-                    };
-                    yield response;
+                    yield t.unwrap();
                 } else {
                     break;
                 }
@@ -161,7 +168,14 @@ impl GrpcWorker {
                                     match operation.execute(ExecuteRequest { task: t.task.clone() }).await {
                                         Ok(completion) => {
                                             // Sending task response to the communicate loop
-                                            binding.send(completion).await?;
+                                            let response = WorkerMessage {
+                                                worker_message_type: Some(
+                                                    worker_message::WorkerMessageType::Completion(
+                                                        completion.clone()
+                                                    )
+                                                )
+                                            };
+                                            binding.send(response).await?;
                                         }
                                         Err(err) => {
                                             panic!("failed to execute task: {:?}", err);
@@ -172,11 +186,25 @@ impl GrpcWorker {
                                 Err(err) => Err(err)?
                             }
                         },
-                        scheduler_message::SchedulerMessageType::Disconnect(diconnect) => {
-                            println!("disconnecting worker: {:?}", diconnect);
+                        scheduler_message::SchedulerMessageType::Disconnect(disconnect) => {
+                            println!("disconnecting worker: {:?}", disconnect);
                         }
                         scheduler_message::SchedulerMessageType::Ack(ack) => {
                             println!("worker registerd on scheduler server: {:?}", ack);
+                        }
+                        scheduler_message::SchedulerMessageType::Heartbeat(_) => {
+                            debug!("got heartbeat from scheduler");
+                            binding.send(WorkerMessage { worker_message_type: Some(
+                                worker_message::WorkerMessageType::Heartbeat(
+                                    Pong {
+                                        metrics: Some(
+                                            WorkerMetrics {
+                                                ..Default::default()
+                                            }
+                                        )
+                                    }
+                                )
+                            ) }).await?;
                         }
                         _ => println!("unable to communicate with unknown scheduler message")
                     }

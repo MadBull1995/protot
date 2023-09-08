@@ -3,3 +3,6 @@ num_workers: 4
 grpc_port: 44880
 graceful_timeout: 30
 load_balancer: ROUND_ROBIN
+heartbeat_interval:
+  seconds: 5
+  nanos: 0

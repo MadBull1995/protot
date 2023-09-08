@@ -2,13 +2,13 @@
 name = "protot"
 version = "0.1.0"
 edition = "2021"
-authors = ["Sylk Team <contact@sylk.build>"]
+authors = ["Amit Shmulevitch <contact@sylk.build>"]
 license = "Apache-2.0"
 description = "An Efficient Distributed Task Scheduling Engine Built in Rust"
 readme = "README.md"
-homepage = "https://github.com/sylk-build/protot"
-repository = "https://github.com/sylk-build/protot"
-keywords = ["grpc", "protobuf", "scheduler", "distributed"]
+homepage = "https://github.com/MadBull1995/protot"
+repository = "https://github.com/MadBull1995/protot"
+keywords = ["grpc", "protobuf", "scheduler", "distributed", "streaming", "multithread"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

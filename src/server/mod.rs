@@ -1,3 +1,17 @@
+// Copyright 2023 The ProtoT Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 pub mod metrics;
 
 use std::{
@@ -6,7 +20,7 @@ use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
-    }, time::Duration,
+    }, time::{Duration, Instant}, collections::HashMap,
 };
 use std::future::Future;
 use tokio_util::sync::CancellationToken;
@@ -73,6 +87,16 @@ impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
                 match worker_message {
                     Ok(message) => {
                         let response = match message.worker_message_type {
+                            Some(WorkerMessageType::Heartbeat(pong)) => {
+                                let binding = registered_worker_id.clone();
+                                debug!("[{}] Got heartbeat from worker: {:?}", binding.clone().unwrap(), pong);
+                                if binding.is_some() {
+                                    let shared_heartbeat = shared_state.worker_heartbeat.clone();  // assuming shared_data contains worker_heartbeat
+                                    let mut heartbeats = shared_heartbeat.lock().await;
+                                    heartbeats.insert(binding.unwrap().clone(), Instant::now());
+                                }
+                                SchedulerMessage::default()
+                            }
                             Some(WorkerMessageType::Completion(task_completion)) => {
                                 info!("got task completion event: {:?}", task_completion);
                                 SchedulerMessage::default()
@@ -104,16 +128,12 @@ impl<B: LoadBalancer> SchedulerWorkerService for SchedulerServer<B> {
                         };
 
                         // Process the worker message and create a response
-                        // let response = ;
-
                         if response.scheduler_message_type.is_some() {
                             if tx.send(Ok(response)).await.is_err() {
                                 error!("{:?}", "errored");
                                 // TODO
                                 // Handle error sending response
                             }
-                        } else {
-                            debug!("should not responed to worker");
                         }
                     }
                     Err(status) => {
@@ -155,7 +175,8 @@ async fn cancel_client(tx: Sender<Result<SchedulerMessage, Status>>, rx_cancel:&
 }
 
 pub struct SharedData {
-    worker_pool: Arc<Mutex<WorkerPool>>, // Use tokio::sync::mpsc::Sender
+    worker_pool: Arc<Mutex<WorkerPool>>,
+    pub worker_heartbeat: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
 // Function to start the scheduler single process node gRPC server
@@ -164,6 +185,7 @@ pub async fn start_scheduler_grpc_server(
     port: i32,
     pool: worker_pool::WorkerPool,
     graceful_timeout: u64,
+    heartbeat_interval: std::time::Duration,
 ) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "stats")]
     {
@@ -183,6 +205,7 @@ pub async fn start_scheduler_grpc_server(
     let cloned_pool = pool.clone();
     let shared_data = Arc::new(SharedData {
         worker_pool: Arc::new(Mutex::new(pool)), // Pass the actual worker pool here
+        worker_heartbeat: Arc::new(Mutex::new(HashMap::new())),
     });
 
     // gRPC server setup
@@ -201,6 +224,33 @@ pub async fn start_scheduler_grpc_server(
 
     // This AtomicBool will be used to track if the interrupt was previously received
     let interrupt_received = Arc::new(AtomicBool::new(false));
+    let grpc_binding = shared_grpc_state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(heartbeat_interval).await;
+    
+            let mut worker_channels = grpc_binding.grpc_worker_channels.lock().await;
+    
+            for (worker_id, worker_channel) in worker_channels.iter_mut() {
+                // Assuming send_heartbeat is an async function in your worker's gRPC API
+                worker_channel.0.send(Ok(SchedulerMessage {
+                    scheduler_message_type: Some(
+                        scheduler_message::SchedulerMessageType::Heartbeat(())
+                    )
+                })).await;
+    
+                // match result {
+                //     Ok(_) => {
+                //         let mut heartbeats = shared_heartbeat.lock().await;
+                //         heartbeats.insert(worker_id.clone(), Instant::now());
+                //     }
+                //     Err(err) => {
+                //         eprintln!("Failed to receive heartbeat from worker {}: {:?}", worker_id, err);
+                //     }
+                // }
+            }
+        }
+    });
 
     // Spawn a new task to listen for shutdown signals
     tokio::spawn(async move {
@@ -282,7 +332,8 @@ pub async fn start_single_process_grpc_server(
     // Init the worker pool
     let cloned_pool = pool.clone();
     let shared_data = Arc::new(SharedData {
-        worker_pool: Arc::new(Mutex::new(pool)), // Pass the actual worker pool here
+        worker_pool: Arc::new(Mutex::new(pool)),
+        worker_heartbeat: Arc::new(Mutex::new(HashMap::new())), // Pass the actual worker pool here
     });
 
     // gRPC server setup
@@ -359,6 +410,7 @@ impl<B: LoadBalancer> SchedulerAdminService<B> {
 
 #[tonic::async_trait]
 impl<B: LoadBalancer> SchedulerService for SchedulerAdminService<B> {
+
     async fn execute(
         &self,
         request: Request<ExecuteRequest>,

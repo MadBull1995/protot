@@ -1,8 +1,22 @@
+// Copyright 2023 The ProtoT Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use prost_types::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_yaml;
 use std::fs;
-
 use crate::internal::protot::core::{self, Config};
 
 use super::error::SchedulerError; // Import Serialize and Deserialize traits
@@ -25,6 +39,12 @@ pub enum LoadBalancer {
     RoundRobin,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WrapperDuration {
+    pub seconds: i64,
+    pub nanos: i32,
+}
+
 #[derive(Debug, Serialize, Deserialize)] // Use the derive macros for serialization and deserialization
 pub struct SerdeConfig {
     #[serde(rename = "node_type")]
@@ -37,6 +57,8 @@ pub struct SerdeConfig {
     graceful_timeout: u64,
     #[serde(rename = "load_balancer")]
     load_balancer: LoadBalancer,
+    #[serde(rename = "heartbeat_interval")]
+    heartbeat_interval: Option<WrapperDuration>,
 }
 
 #[allow(unused)]
@@ -115,6 +137,13 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
     // Now you have your configuration struct populated
     println!("{:?}", config);
 
+    let heartbeat_interval = config.heartbeat_interval.map(|custom_duration| {
+        prost_types::Duration {
+            seconds: custom_duration.seconds,
+            nanos: custom_duration.nanos,
+        }
+    });
+
     let cfg = Config {
         grpc_port: config.grpc_port,
         node_type: match config.node_type {
@@ -127,6 +156,7 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
         load_balancer: match config.load_balancer {
             LoadBalancer::RoundRobin => core::LoadBalancer::RoundRobin.into(),
         },
+        heartbeat_interval: heartbeat_interval,
     };
 
     Ok(cfg)

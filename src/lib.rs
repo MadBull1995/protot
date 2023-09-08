@@ -1,3 +1,17 @@
+// Copyright 2023 The ProtoT Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //! # ProtoT - Task Scheduler: A Distributed Task Scheduling System
 //!
 //! `ProtoT` is a sophisticated distributed task scheduling library built with Rust, designed to manage and distribute tasks effectively across various worker nodes.
@@ -128,6 +142,20 @@ pub async fn start(
 }
 
 
+fn prost_duration_to_std_duration(prost_duration: Option<prost_types::Duration>) -> Duration {
+    match prost_duration {
+        Some(duration) => {
+            let seconds = duration.seconds;
+            let nanos = duration.nanos;
+            Duration::new(seconds as u64, nanos as u32)
+        }
+        None => {
+            // Default to 1 second
+            Duration::from_secs(1)
+        }
+    }
+}
+
 async fn init_distributed_grpc_scheduler( 
     cfg: protot::core::Config,
     opts: ProcessOptions,
@@ -145,7 +173,12 @@ async fn init_distributed_grpc_scheduler(
 
     collect_stats();
     // Todo start scheduler server
-    match start_scheduler_grpc_server(cfg.grpc_port, pool, cfg.graceful_timeout).await {
+    match start_scheduler_grpc_server(
+        cfg.grpc_port,
+        pool,
+        cfg.graceful_timeout,
+        prost_duration_to_std_duration(cfg.heartbeat_interval)
+    ).await {
         Err(err) => Err(SchedulerError::SchedulerServiceError(format!(
             "Scheduler errored: {:?}",
             &*err

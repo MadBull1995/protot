@@ -6,7 +6,8 @@
         "protoBasePath": "protos",
         "host": "localhost",
         "port": 44880,
-        "codeBasePath": "generated"
+        "codeBasePath": "generated",
+        "license": "// Copyright 2023 The ProtoT Authors\n//\n// Licensed under the Apache License, Version 2.0 (the \\\"License\\\");\n// you may not use this file except in compliance with the License.\n// You may obtain a copy of the License at\n//\n//      http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing, software\n// distributed under the License is distributed on an \\\"AS IS\\\" BASIS,\n// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n// See the License for the specific language governing permissions and\n// limitations under the License."
     },
     "sylkVersion": "0.4.0",
     "project": {
@@ -24,6 +25,185 @@
         }
     },
     "packages": {
+        "protot/core": {
+            "name": "core",
+            "package": "protot.core",
+            "messages": [
+                {
+                    "name": "Task",
+                    "fullName": "protot.core.Task",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "fullName": "protot.core.Task.id",
+                            "fieldType": "TYPE_STRING",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 1
+                        },
+                        {
+                            "name": "payload",
+                            "fullName": "protot.core.Task.payload",
+                            "fieldType": "TYPE_MESSAGE",
+                            "label": "LABEL_OPTIONAL",
+                            "messageType": "google.protobuf.Any",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "task"
+                },
+                {
+                    "name": "Config",
+                    "fullName": "protot.core.Config",
+                    "fields": [
+                        {
+                            "name": "node_type",
+                            "fullName": "protot.core.Config.node_type",
+                            "fieldType": "TYPE_ENUM",
+                            "label": "LABEL_OPTIONAL",
+                            "enumType": "protot.core.NodeType",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 1
+                        },
+                        {
+                            "name": "num_workers",
+                            "fullName": "protot.core.Config.num_workers",
+                            "fieldType": "TYPE_INT32",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 2
+                        },
+                        {
+                            "name": "grpc_port",
+                            "fullName": "protot.core.Config.grpc_port",
+                            "fieldType": "TYPE_INT32",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 3
+                        },
+                        {
+                            "name": "graceful_timeout",
+                            "fullName": "protot.core.Config.graceful_timeout",
+                            "fieldType": "TYPE_UINT64",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 4
+                        },
+                        {
+                            "name": "load_balancer",
+                            "fullName": "protot.core.Config.load_balancer",
+                            "fieldType": "TYPE_ENUM",
+                            "label": "LABEL_OPTIONAL",
+                            "enumType": "protot.core.LoadBalancer",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 5
+                        },
+                        {
+                            "name": "heartbeat_interval",
+                            "fullName": "protot.core.Config.heartbeat_interval",
+                            "fieldType": "TYPE_MESSAGE",
+                            "label": "LABEL_OPTIONAL",
+                            "messageType": "google.protobuf.Duration",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "index": 6
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "configs"
+                }
+            ],
+            "enums": [
+                {
+                    "name": "LoadBalancer",
+                    "fullName": "protot.core.LoadBalancer",
+                    "values": [
+                        {
+                            "name": "ROUND_ROBIN",
+                            "fullName": "protot.core.LoadBalancer.ROUND_ROBIN",
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "enum",
+                    "tag": "configs"
+                },
+                {
+                    "name": "NodeType",
+                    "fullName": "protot.core.NodeType",
+                    "description": "The possible node types for proto tasker process",
+                    "values": [
+                        {
+                            "name": "SINGLE_PROCESS",
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        },
+                        {
+                            "name": "WORKER",
+                            "index": 1,
+                            "number": 1,
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        },
+                        {
+                            "name": "SCHEDULER",
+                            "index": 1,
+                            "number": 2,
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "enum",
+                    "tag": "configs"
+                },
+                {
+                    "name": "TaskState",
+                    "fullName": "protot.core.TaskState",
+                    "description": "The possible task states",
+                    "values": [
+                        {
+                            "name": "PENDING",
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        },
+                        {
+                            "name": "SUCCESS",
+                            "index": 1,
+                            "number": 1,
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        },
+                        {
+                            "name": "FAIL",
+                            "index": 1,
+                            "number": 2,
+                            "type": "descriptor",
+                            "kind": "enum_value"
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "enum",
+                    "tag": "task"
+                }
+            ],
+            "type": "package",
+            "dependencies": [
+                "google.protobuf"
+            ]
+        },
         "protot/scheduler/v1": {
             "name": "scheduler",
             "package": "protot.scheduler.v1",
@@ -211,6 +391,25 @@
                     "tag": "scheduler_worker"
                 },
                 {
+                    "name": "Pong",
+                    "fullName": "protot.scheduler.v1.Pong",
+                    "fields": [
+                        {
+                            "name": "metrics",
+                            "fullName": "protot.scheduler.v1.Pong.metrics",
+                            "fieldType": "TYPE_MESSAGE",
+                            "label": "LABEL_OPTIONAL",
+                            "type": "descriptor",
+                            "kind": "field",
+                            "messageType": "protot.metrics.v1.WorkerMetrics",
+                            "index": 1
+                        }
+                    ],
+                    "type": "descriptor",
+                    "kind": "message",
+                    "tag": "scheduler_worker"
+                },
+                {
                     "name": "TaskCompletion",
                     "fullName": "protot.scheduler.v1.TaskCompletion",
                     "fields": [
@@ -268,6 +467,15 @@
                                     "messageType": "protot.scheduler.v1.TaskCompletion",
                                     "index": 2,
                                     "kind": "oneof"
+                                },
+                                {
+                                    "name": "heartbeat",
+                                    "fullName": "protot.scheduler.v1.WorkerMessage.worker_message_type.heartbeat",
+                                    "fieldType": "TYPE_MESSAGE",
+                                    "label": "LABEL_OPTIONAL",
+                                    "messageType": "protot.scheduler.v1.Pong",
+                                    "index": 3,
+                                    "kind": "oneof"
                                 }
                             ]
                         }
@@ -316,6 +524,15 @@
                                     "messageType": "protot.scheduler.v1.Disconnect",
                                     "index": 3,
                                     "kind": "oneof"
+                                },
+                                {
+                                    "name": "heartbeat",
+                                    "fullName": "protot.scheduler.v1.SchedulerMessage.scheduler_message_type.heartbeat",
+                                    "fieldType": "TYPE_MESSAGE",
+                                    "label": "LABEL_OPTIONAL",
+                                    "messageType": "google.protobuf.Empty",
+                                    "index": 4,
+                                    "kind": "oneof"
                                 }
                             ]
                         }
@@ -360,7 +577,8 @@
             ],
             "type": "package",
             "dependencies": [
-                "protot.core"
+                "protot.core",
+                "protot.metrics.v1"
             ],
             "extensions": {
                 "files": {
@@ -412,174 +630,47 @@
                 }
             ]
         },
-        "protot/core": {
-            "name": "core",
-            "package": "protot.core",
+        "protot/metrics/v1": {
+            "name": "metrics",
+            "package": "protot.metrics.v1",
             "messages": [
                 {
-                    "name": "Task",
-                    "fullName": "protot.core.Task",
+                    "name": "WorkerMetrics",
+                    "fullName": "protot.metrics.v1.WorkerMetrics",
                     "fields": [
                         {
-                            "name": "id",
-                            "fullName": "protot.core.Task.id",
-                            "fieldType": "TYPE_STRING",
+                            "name": "queued_tasks",
+                            "fullName": "protot.metrics.v1.WorkerMetrics.queued_tasks",
+                            "fieldType": "TYPE_INT64",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 1
                         },
                         {
-                            "name": "payload",
-                            "fullName": "protot.core.Task.payload",
-                            "fieldType": "TYPE_MESSAGE",
-                            "label": "LABEL_OPTIONAL",
-                            "messageType": "google.protobuf.Any",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 2
-                        }
-                    ],
-                    "type": "descriptor",
-                    "kind": "message",
-                    "tag": "task"
-                },
-                {
-                    "name": "Config",
-                    "fullName": "protot.core.Config",
-                    "fields": [
-                        {
-                            "name": "node_type",
-                            "fullName": "protot.core.Config.node_type",
-                            "fieldType": "TYPE_ENUM",
-                            "label": "LABEL_OPTIONAL",
-                            "enumType": "protot.core.NodeType",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 1
-                        },
-                        {
-                            "name": "num_workers",
-                            "fullName": "protot.core.Config.num_workers",
-                            "fieldType": "TYPE_INT32",
+                            "name": "executed_tasks",
+                            "fullName": "protot.metrics.v1.WorkerMetrics.executed_tasks",
+                            "fieldType": "TYPE_INT64",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 2
                         },
                         {
-                            "name": "grpc_port",
-                            "fullName": "protot.core.Config.grpc_port",
-                            "fieldType": "TYPE_INT32",
+                            "name": "failed_tasks",
+                            "fullName": "protot.metrics.v1.WorkerMetrics.failed_tasks",
+                            "fieldType": "TYPE_INT64",
                             "label": "LABEL_OPTIONAL",
                             "type": "descriptor",
                             "kind": "field",
                             "index": 3
-                        },
-                        {
-                            "name": "graceful_timeout",
-                            "fullName": "protot.core.Config.graceful_timeout",
-                            "fieldType": "TYPE_UINT64",
-                            "label": "LABEL_OPTIONAL",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 4
-                        },
-                        {
-                            "name": "load_balancer",
-                            "fullName": "protot.core.Config.load_balancer",
-                            "fieldType": "TYPE_ENUM",
-                            "label": "LABEL_OPTIONAL",
-                            "enumType": "protot.core.LoadBalancer",
-                            "type": "descriptor",
-                            "kind": "field",
-                            "index": 5
                         }
                     ],
                     "type": "descriptor",
-                    "kind": "message",
-                    "tag": "configs"
+                    "kind": "message"
                 }
             ],
-            "enums": [
-                {
-                    "name": "LoadBalancer",
-                    "fullName": "protot.core.LoadBalancer",
-                    "values": [
-                        {
-                            "name": "ROUND_ROBIN",
-                            "fullName": "protot.core.LoadBalancer.ROUND_ROBIN",
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        }
-                    ],
-                    "type": "descriptor",
-                    "kind": "enum",
-                    "tag": "configs"
-                },
-                {
-                    "name": "NodeType",
-                    "fullName": "protot.core.NodeType",
-                    "description": "The possible node types for proto tasker process",
-                    "values": [
-                        {
-                            "name": "SINGLE_PROCESS",
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        },
-                        {
-                            "name": "WORKER",
-                            "index": 1,
-                            "number": 1,
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        },
-                        {
-                            "name": "SCHEDULER",
-                            "index": 1,
-                            "number": 2,
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        }
-                    ],
-                    "type": "descriptor",
-                    "kind": "enum",
-                    "tag": "configs"
-                },
-                {
-                    "name": "TaskState",
-                    "fullName": "protot.core.TaskState",
-                    "description": "The possible task states",
-                    "values": [
-                        {
-                            "name": "PENDING",
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        },
-                        {
-                            "name": "SUCCESS",
-                            "index": 1,
-                            "number": 1,
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        },
-                        {
-                            "name": "FAIL",
-                            "index": 1,
-                            "number": 2,
-                            "type": "descriptor",
-                            "kind": "enum_value"
-                        }
-                    ],
-                    "type": "descriptor",
-                    "kind": "enum",
-                    "tag": "task"
-                }
-            ],
-            "type": "package",
-            "dependencies": [
-                "google.protobuf"
-            ]
+            "type": "package"
         }
     }
 }

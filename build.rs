@@ -8,6 +8,8 @@ pub(crate) fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "./protos/protot/core/configs.proto",
                 "./protos/protot/scheduler/v1/scheduler.proto",
                 "./protos/protot/scheduler/v1/scheduler_worker.proto",
+                "./protos/protot/metrics/v1/metrics.proto",
+
             ],
             &["./protos"],
         )?;
