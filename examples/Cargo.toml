@@ -1,9 +1,23 @@
 [package]
+authors = ["Lucio Franco <luciofranco14@gmail.com>"]
 name = "protot_examples"
 version = "0.1.0"
 edition = "2021"
+publish = false
+license = "Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "worker"
+path = "src/worker/worker.rs"
+
+[[bin]]
+name = "single-process"
+path = "src/single-process/server.rs"
+
+[[bin]]
+name = "task-producer"
+path = "src/task-producer/client.rs"
+
 
 [dependencies]
 async-trait = "0.1.73"

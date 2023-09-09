@@ -35,4 +35,4 @@ RUN apt-get update && \
 # copy the build artifact from the build stage
 COPY --from=build /protot/target/release/protot .
 COPY ./configs.yaml ./configs.yaml
-CMD ["./protot"]
+CMD ["./protot init --data-host redis://redis/ --grpc-port 44880"]

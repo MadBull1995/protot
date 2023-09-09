@@ -80,10 +80,10 @@ pub mod client;
 pub mod core;
 pub mod internal;
 pub mod data;
+pub mod utils;
 
 mod server;
-mod utils;
-use crate::{core::worker_pool::{TaskExecutor, TaskRegistry}, server::start_single_process_grpc_server, data::{DataStore, RedisDataStore}};
+use crate::{core::worker_pool::{TaskExecutor, TaskRegistry}, server::start_single_process_grpc_server, data::{DataStore, RedisDataStore}, internal::protot::core::NodeType};
 pub use lazy_static::lazy_static;
 use log::{info, debug, error};
 use server::start_scheduler_grpc_server;
@@ -130,20 +130,26 @@ pub async fn start(
         task_executors: registry,
         ..Default::default()
     };
-
-    let cfg_data_store = cfgs.data_store.clone();
-    let data_store = match cfg_data_store.clone().unwrap().r#type {
-        0 => {
-            let data_store: Arc<AsyncMutex<RedisDataStore>> = Arc::new(AsyncMutex::new(RedisDataStore::new(&cfg_data_store.unwrap().host).await?));
-            data_store
-        },
-        _ => panic!("Unsupported data store type"),
-    }; 
     
     match cfgs.node_type() {
         protot::core::NodeType::SingleProcess => init_single_process_grpc_scheduler(cfgs, opts).await,
         protot::core::NodeType::Scheduler => {
-            init_distributed_grpc_scheduler(cfgs, opts, data_store).await
+            let cfg_data_store = cfgs.data_store.clone();
+            match cfg_data_store {
+                Some(db) => {
+                    let data_store = match db.r#type {
+                        0 => {
+                            let data_store: Arc<AsyncMutex<RedisDataStore>> = Arc::new(AsyncMutex::new(RedisDataStore::new(&db.host).await?));
+                            data_store
+                        },
+                        _ => panic!("Unsupported data store type"),
+                    }; 
+                    init_distributed_grpc_scheduler(cfgs, opts, data_store).await
+                }
+                None => {
+                    return Err(SchedulerError::DataLayerError("Must set up a data store configurations".to_string()))
+                } 
+            }
         },
         _ => Err(SchedulerError::SchedulerUnimplemented(format!(
             "Unimplemented node type {}",
@@ -176,6 +182,8 @@ async fn init_distributed_grpc_scheduler(
     opts: ProcessOptions,
     db: Arc<AsyncMutex<dyn data::DataStore>>,
 ) -> Result<(), SchedulerError> {
+    debug!("configs dump: {:#?}", cfg);
+
     let registry = opts.task_executors;
 
     let executors = Arc::new(Mutex::new(registry));

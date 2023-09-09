@@ -30,76 +30,67 @@ use tokio::time::sleep;
 use tonic::{Status, Response};
 
 // Define you own task executor
-struct MyExecutor;
+struct MyWorker;
 // Impl the TaskExecutor trait to hold the actual task logic
-impl TaskExecutor for MyExecutor {
+impl TaskExecutor for MyWorker {
     fn execute(&self, args: ExecuteRequest) {
-        println!("executed task");
+        println!("custom worker executed task");
     }
 }
-struct MyAsyncExecutor;
 
+/// Can add a custom data structure to our worker
+struct MyGrpcWorker;
+
+/// gRPC worker must implement `AsyncTaskExecutor` trait for handling async calls from the scheduler server 
 #[async_trait]
-impl AsyncTaskExecutor for MyAsyncExecutor {
+impl AsyncTaskExecutor for MyGrpcWorker {
+    /// the execute will be invoked on worker once it recieved `AssignTaskRequest` from scheduler
     async fn execute(&self, args: ExecuteRequest) -> Result<TaskCompletion, ()> {
-        
-        println!("executed async task {:?}", args);
-        // tokio::spawn returns a JoinHandle that is a Future.
-        // The spawned future is running in the background and you can await the JoinHandle whenever you're ready.
+        println!("gRPC worker executing async task {:?}", args);
+
+        // ..Your code execution logic goes here..
+
+        // Just for mimicing "Really long running" task
         let join_handle = tokio::spawn(async {
             tokio::time::sleep(Duration::from_secs(10)).await;
         });
-         // Awaiting the join handle here to make sure the spawned task completes.
-        // If you wish, you can store it somewhere and await it later.
+        
         let _ = join_handle.await.map_err(|e| {
             eprintln!("Failed to join spawned task: {}", e);
         });
-        Ok(TaskCompletion { task_id: args.task.unwrap().id.clone(), state: TaskState::Pending.into(), execution_id: args.execution_id })
+
+        Ok(
+            TaskCompletion {
+                task_id: args.task.unwrap().id.clone(),
+                state: TaskState::Pending.into(),
+                execution_id: args.execution_id 
+            }
+        )
     }
 }
 
-
 #[tokio::main]
 async fn main() {
-
-
     // ** gRPC Worker Setup **
     let mut grpc_registry = GrpcWorkersRegistry::new();
-    grpc_registry.register_task("task-1", MyAsyncExecutor {});
-    grpc_registry.register_task("task-2", MyAsyncExecutor {});
+
+    // Register tasks execution logic
+    grpc_registry.register_task("task-1", MyGrpcWorker {});
+    grpc_registry.register_task("task-2", MyGrpcWorker {});
  
+    // ..any task that is not registered on the worker will bot be executed on this worker..
+
+    // worker id must be unique on the scheduler
+    // otherwise it will return error on communicate
     let worker = protot::client::GrpcWorkerBuilder::new()
-        .with_id("some-worker-2".to_string())
+        .with_id("some-worker-1".to_string()) 
         .with_registry(grpc_registry)
         .build();
-    
+    // the only communication channel process for scheduler<->worker
     let res = worker.communicate().await;
+    
     match res {
         Ok(()) => println!("worker done"),
         Err(e) => println!("some error: {:?}", e)
     };
-
-
-    // handler_worker_1.join().unwrap().await;
-
-    // ** Scheduler Server Setup **
-
-    // Init a registry for your tasks and Executors
-    // let mut tr = TaskRegistry::new();
-    // tr.register_task(task_name, executor)
-    // // Register you custom executor
-    // tr.register_task("some_task_name", MyExecutor {});
-
-    // // Optional configuration otherwise must have a 'configs.yaml/json' file in your root directory
-    // let cfg = Config {
-    //     grpc_port: 44880,
-    //     node_type: NodeType::SingleProcess.into(),
-    //     num_workers: 4,
-    // };
-
-    // // Startup the scheduler service and workers
-    // match start(tr, Some(cfg)) {
-    //     Err(err) => panic!("some error occured: {:?}", err),
-    //     Ok(()) => println!("protot server started."),
-    // };
 }

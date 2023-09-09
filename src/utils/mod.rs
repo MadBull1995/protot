@@ -17,6 +17,12 @@ pub mod error;
 pub mod logger;
 pub mod shared;
 
+const NAME: &'static str = env!("CARGO_PKG_NAME");
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
+const DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
+const REPOSITORY: &'static str = env!("CARGO_PKG_REPOSITORY");
+
 /// Fetches the current timestamp.
 pub fn current_timestamp() -> i64 {
     // Generate the current timestamp. This function can be more precise depending on your requirements.
@@ -25,4 +31,40 @@ pub fn current_timestamp() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("Time went backwards");
     since_the_epoch.as_secs() as i64
+}
+
+pub fn get_ascii_logo() -> String {
+    let logo = "
+                             
+    _____         _       _____ 
+   |  _  |___ ___| |_ ___|_   _|
+   |   __|  _| . |  _| . | | |  
+   |__|  |_| |___|_| |___| |_|  
+                                
+   ".to_string();
+   logo
+}
+
+pub fn get_protot_metadata() -> String {
+    let metadata = vec![
+        ("Application", NAME),
+        ("Version", VERSION),
+        ("Authors", AUTHORS),
+        ("Description", DESCRIPTION),
+        ("Github", REPOSITORY),
+    ];
+
+    let separator = "=".repeat(60);
+    let mut formatted_metadata = String::new();
+
+    formatted_metadata.push_str(&separator);
+    formatted_metadata.push('\n');
+
+    for (key, value) in metadata {
+        formatted_metadata.push_str(&format!("{:<16}{}\n", key, value));
+    }
+
+    formatted_metadata.push_str(&separator);
+
+    formatted_metadata
 }

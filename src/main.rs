@@ -16,10 +16,12 @@ extern crate lazy_static;
 
 use protot::config_load;
 use protot::internal::protot::core::{Config, DataStore, DataStoreType, NodeType};
+use protot::utils::{get_ascii_logo, get_protot_metadata};
 use protot::{
     core::worker_pool::TaskRegistry, start, SchedulerError, TaskExecutorImpl1, TaskExecutorImpl2,
 };
 use clap::{Parser, Subcommand};
+use std::process::exit;
 use std::{path::PathBuf, ops::RangeInclusive};
 use std::fs;
 
@@ -41,19 +43,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// initialize new scheduler server / worker
+    /// initialize new scheduler server
     Init {
-        /// if to spin up a worker
-        #[arg(short, long)]
-        worker: Option<bool>,
-
         /// data store host
         #[arg(short, long)]
         data_host: Option<String>,
-
-        /// sets the node type
-        #[arg(long, default_value = "SingleProcess")]
-        node_type: String,
 
         /// the allocated num of workers (threads) to be used by scheduler
         #[arg(long, value_parser = num_workers_in_range, default_value = "4")]
@@ -112,7 +106,7 @@ fn check_config_file_available(config_path: PathBuf) -> Result<(), String> {
 #[tokio::main]
 async fn main() -> Result<(), SchedulerError> {
     let cli: Cli = Cli::parse();
-    
+    println!("{}\n{}", get_ascii_logo(), get_protot_metadata());
     let mut executors = TaskRegistry::new();
     
     let loaded_cfgs = match cli.config {
@@ -131,9 +125,7 @@ async fn main() -> Result<(), SchedulerError> {
 
     match cli.command {
         Some(Commands::Init { 
-            worker,
             data_host,
-            node_type,
             num_workers,
             grpc_port 
         }) => {
@@ -145,16 +137,13 @@ async fn main() -> Result<(), SchedulerError> {
                 });
             }
 
-            if node_type == "Scheduler" {
-                cfgs.node_type = NodeType::Scheduler.into()  
-            } else {
-                cfgs.node_type = NodeType::SingleProcess.into()  
-            }
             cfgs.num_workers = num_workers as i32;
             cfgs.grpc_port = grpc_port as i32;
+            cfgs.node_type = NodeType::Scheduler.into();
         },
         None => {
-            println!("GoodBye :)")
+            println!("GoodBye :)");
+            exit(1);
         }
     }
 

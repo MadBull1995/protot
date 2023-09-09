@@ -151,9 +151,6 @@ pub fn config_load(path: String) -> Result<Config, SchedulerError> {
         ));
     };
 
-    // Now you have your configuration struct populated
-    println!("{:?}", config);
-
     let heartbeat_interval = config.heartbeat_interval.map(|custom_duration| {
         prost_types::Duration {
             seconds: custom_duration.seconds,

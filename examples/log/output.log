@@ -1,0 +1,75 @@
+[20230909 12:30:51.767][INFO][main]protot:112 - Scheduler starting
+[20230909 12:35:03.015][INFO][main]protot:112 - Scheduler starting
+[20230909 12:35:03.016][DEBUG][main]protot:282 - configs dump: Config {
+    node_type: SingleProcess,
+    num_workers: 4,
+    grpc_port: 44880,
+    graceful_timeout: 30,
+    load_balancer: RoundRobin,
+    heartbeat_interval: None,
+    data_store: None,
+}
+[20230909 12:35:03.016][INFO][scheduler-0]protot::core::worker:241 - worker starting
+[20230909 12:35:03.016][INFO][scheduler-3]protot::core::worker:241 - worker starting
+[20230909 12:35:03.016][INFO][scheduler-1]protot::core::worker:241 - worker starting
+[20230909 12:35:03.017][DEBUG][main]protot::core::worker_pool:202 - registerd: some_task_name
+[20230909 12:35:03.017][DEBUG][main]protot:274 - collecting stats disabled, to enable use feature flag: "stats"
+[20230909 12:35:03.017][INFO][scheduler-2]protot::core::worker:241 - worker starting
+[20230909 12:35:03.018][DEBUG][main]protot::server:413 - gRPC server started
+[20230909 12:35:15.171][INFO][scheduler-0]protot::core::worker:97 - worker executing job -> 0
+[20230909 12:35:15.171][DEBUG][scheduler-0]protot::server:540 - executing task: task-1
+[20230909 12:35:15.172][ERROR][scheduler-0]protot::core::worker_pool:176 - sentinel droped, spawnning a new worker
+[20230909 12:35:15.172][INFO][scheduler-0]protot::core::worker:241 - worker starting
+[20230909 12:35:26.176][INFO][scheduler-3]protot::core::worker:97 - worker executing job -> 1
+[20230909 12:35:26.176][ERROR][scheduler-3]protot::core::worker_pool:176 - sentinel droped, spawnning a new worker
+[20230909 12:35:26.176][INFO][scheduler-3]protot::core::worker:241 - worker starting
+[20230909 12:39:35.327][DEBUG][tokio-runtime-worker]protot::server:385 - server interrupted
+[20230909 12:40:09.955][INFO][main]protot:112 - Scheduler starting
+[20230909 12:40:09.956][DEBUG][main]protot:282 - configs dump: Config {
+    node_type: SingleProcess,
+    num_workers: 4,
+    grpc_port: 44880,
+    graceful_timeout: 30,
+    load_balancer: RoundRobin,
+    heartbeat_interval: None,
+    data_store: None,
+}
+[20230909 12:40:09.956][INFO][scheduler-0]protot::core::worker:241 - worker starting
+[20230909 12:40:09.956][DEBUG][main]protot::core::worker_pool:202 - registerd: some_task_name
+[20230909 12:40:09.956][INFO][scheduler-1]protot::core::worker:241 - worker starting
+[20230909 12:40:09.956][INFO][scheduler-2]protot::core::worker:241 - worker starting
+[20230909 12:40:09.956][INFO][scheduler-3]protot::core::worker:241 - worker starting
+[20230909 12:40:09.956][DEBUG][main]protot:274 - collecting stats disabled, to enable use feature flag: "stats"
+[20230909 12:40:09.957][DEBUG][main]protot::server:413 - gRPC server started
+[20230909 12:40:11.999][DEBUG][tokio-runtime-worker]protot::server:385 - server interrupted
+[20230909 12:40:20.636][INFO][main]protot:112 - Scheduler starting
+[20230909 12:40:20.636][DEBUG][main]protot:282 - configs dump: Config {
+    node_type: SingleProcess,
+    num_workers: 4,
+    grpc_port: 44880,
+    graceful_timeout: 30,
+    load_balancer: RoundRobin,
+    heartbeat_interval: None,
+    data_store: None,
+}
+[20230909 12:40:20.636][INFO][scheduler-1]protot::core::worker:241 - worker starting
+[20230909 12:40:20.636][DEBUG][main]protot::core::worker_pool:202 - registerd: some_task_name
+[20230909 12:40:20.636][INFO][scheduler-0]protot::core::worker:241 - worker starting
+[20230909 12:40:20.637][INFO][scheduler-2]protot::core::worker:241 - worker starting
+[20230909 12:40:20.637][INFO][scheduler-3]protot::core::worker:241 - worker starting
+[20230909 12:40:20.637][DEBUG][main]protot:274 - collecting stats disabled, to enable use feature flag: "stats"
+[20230909 12:40:20.638][DEBUG][main]protot::server:413 - gRPC server started
+[20230909 12:40:22.549][INFO][scheduler-1]protot::core::worker:97 - worker executing job -> 0
+[20230909 12:40:22.550][DEBUG][scheduler-1]protot::server:540 - executing task: task-1
+[20230909 12:40:22.550][ERROR][scheduler-1]protot::core::worker_pool:176 - sentinel droped, spawnning a new worker
+[20230909 12:40:22.550][INFO][scheduler-1]protot::core::worker:241 - worker starting
+[20230909 12:40:23.249][INFO][scheduler-0]protot::core::worker:97 - worker executing job -> 1
+[20230909 12:40:23.249][ERROR][scheduler-0]protot::core::worker_pool:176 - sentinel droped, spawnning a new worker
+[20230909 12:40:23.249][INFO][scheduler-0]protot::core::worker:241 - worker starting
+[20230909 12:40:23.951][INFO][scheduler-2]protot::core::worker:97 - worker executing job -> 2
+[20230909 12:40:23.952][ERROR][scheduler-2]protot::core::worker_pool:176 - sentinel droped, spawnning a new worker
+[20230909 12:40:23.952][INFO][scheduler-2]protot::core::worker:241 - worker starting
+[20230909 12:40:24.553][INFO][scheduler-3]protot::core::worker:97 - worker executing job -> 3
+[20230909 12:40:24.553][ERROR][scheduler-3]protot::core::worker_pool:176 - sentinel droped, spawnning a new worker
+[20230909 12:40:24.553][INFO][scheduler-3]protot::core::worker:241 - worker starting
+[20230909 12:40:26.614][DEBUG][tokio-runtime-worker]protot::server:385 - server interrupted
