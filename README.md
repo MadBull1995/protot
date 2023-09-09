@@ -104,6 +104,7 @@ Components:
 - `prom`: Metrics collection and exposure
 
 Consult the `Dockerfile` and `docker-compose.yml` for additional information.
+Also can look at the [`Developer's Docker Guide for ProtoT`](./docker/README.md)
 
 ## Protobuf Development
 
