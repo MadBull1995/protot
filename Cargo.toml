@@ -2,7 +2,7 @@
 name = "protot"
 version = "0.1.0"
 edition = "2021"
-authors = ["Amit Shmulevitch <contact@sylk.build>"]
+authors = ["Amit Shmulevitch <amitsh1995@gmail.com>"]
 license = "Apache-2.0"
 description = "An Efficient Distributed Task Scheduling Engine Built in Rust"
 readme = "README.md"

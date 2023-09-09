@@ -1105,6 +1105,9 @@ name = "protot_examples"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "prost 0.11.9",
+ "prost-types",
+ "protobuf",
  "protot",
  "tokio",
  "tonic 0.10.0",

@@ -20,7 +20,6 @@ COPY ./src ./src
 COPY ./protos ./protos
 COPY ./build.rs ./build.rs
 
-
 # build for release
 RUN rm ./target/release/deps/protot*
 RUN cargo build --release --features "stats"
@@ -32,7 +31,10 @@ WORKDIR /protot
 RUN apt-get update && \
     apt-get install -y protobuf-compiler
 
+ENV PROTOT_REDIS_HOST="redis://redis/"
+ENV PROTOT_GRPC_PORT=44880
 # copy the build artifact from the build stage
 COPY --from=build /protot/target/release/protot .
 COPY ./configs.yaml ./configs.yaml
-CMD ["./protot init --data-host redis://redis/ --grpc-port 44880"]
+CMD ./protot init --data-host ${PROTOT_REDIS_HOST} --grpc-port ${PROTOT_GRPC_PORT}
+

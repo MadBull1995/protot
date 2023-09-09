@@ -1,6 +1,8 @@
 /target
 /data
 /examples/target
+/examples/log
+/docker/data
 /log
 /generated
 *.py

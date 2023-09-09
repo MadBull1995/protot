@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{error::Error, sync::Arc, time::Duration};
+use std::{error::Error, sync::Arc, time::Duration, env};
 
 use async_trait::async_trait;
 use protot::{
@@ -71,6 +71,15 @@ impl AsyncTaskExecutor for MyGrpcWorker {
 
 #[tokio::main]
 async fn main() {
+
+    // Parse command-line arguments to get worker ID
+    let args: Vec<String> = env::args().collect();
+    let worker_id = if args.len() > 1 {
+        args[1].clone()
+    } else {
+        "default-worker-id".to_string() // fallback to a default worker ID
+    };
+
     // ** gRPC Worker Setup **
     let mut grpc_registry = GrpcWorkersRegistry::new();
 
@@ -83,7 +92,7 @@ async fn main() {
     // worker id must be unique on the scheduler
     // otherwise it will return error on communicate
     let worker = protot::client::GrpcWorkerBuilder::new()
-        .with_id("some-worker-1".to_string()) 
+        .with_id(worker_id) 
         .with_registry(grpc_registry)
         .build();
     // the only communication channel process for scheduler<->worker

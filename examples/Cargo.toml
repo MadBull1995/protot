@@ -1,5 +1,5 @@
 [package]
-authors = ["Lucio Franco <luciofranco14@gmail.com>"]
+authors = ["Amit Shmulevitch <amitsh1995@gmail.com>"]
 name = "protot_examples"
 version = "0.1.0"
 edition = "2021"
@@ -21,6 +21,9 @@ path = "src/task-producer/client.rs"
 
 [dependencies]
 async-trait = "0.1.73"
+prost = "0.11.9"
+prost-types = "0.11.9"
+protobuf = "3.2.0"
 protot = { path = "../" }
-tokio = "1.32.0"
+tokio = { version = "1.32.0", features = ["full"]}
 tonic = "0.10.0"

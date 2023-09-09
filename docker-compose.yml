@@ -3,8 +3,13 @@ version: '3.8'
 services:
   proto_tasker_app:
     image: protot
+    environment:
+      - PROTOT_GRPC_PORT=44880
+      - PROTOT_REDIS_HOST="redis://redis/"
     networks:
       - proto_tasker_net
+    depends_on:
+      - redis
     ports:
       - "44880:44880"
       - "9091:9091"

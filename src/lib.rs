@@ -89,6 +89,7 @@ use log::{info, debug, error};
 use server::start_scheduler_grpc_server;
 use tokio::sync::Mutex as AsyncMutex;
 
+use ::core::fmt;
 use std::{
     sync::{Arc, Mutex},
     thread,
@@ -97,11 +98,44 @@ use std::{
 
 use internal::protot::{
     self,
-    core::{Config, Task},
+    core::{Config, Task, DataStoreType, LoadBalancer},
     scheduler::v1::ExecuteRequest,
 };
 use protobuf::well_known_types::{any::Any, struct_};
 pub use utils::{configs::config_load, error::SchedulerError, logger};
+
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let separator = "*".repeat(80);
+        writeln!(f, "{}", separator)?;
+
+        writeln!(f, "{:<20}{}", "Node Type", NodeType::from_i32(self.node_type).unwrap().as_str_name())?;
+        writeln!(f, "{:<20}{}", "Num Workers", self.num_workers)?;
+        writeln!(f, "{:<20}{}", "gRPC Port", self.grpc_port)?;
+        writeln!(f, "{:<20}{}", "Graceful Timeout", self.graceful_timeout)?;
+        writeln!(f, "{:<20}{}", "Load Balancer", LoadBalancer::from_i32(self.load_balancer).unwrap().as_str_name())?;
+
+        let heartbeat_str = match &self.heartbeat_interval {
+            Some(duration) => format!("{} seconds, {} nanos", duration.seconds, duration.nanos),
+            None => "None".to_string(),
+        };
+        writeln!(f, "{:<20}{}", "Heartbeat", heartbeat_str)?;
+
+        if let Some(data_store) = &self.data_store {
+            let cleaned_host = data_store.host.replace("\"", "");
+            writeln!(f, "{:<20}{}", "Data Store", DataStoreType::from_i32(data_store.r#type).unwrap().as_str_name())?;
+            writeln!(f, "{:<20}{}", "Data Store Host", cleaned_host)?;
+        } else {
+            writeln!(f, "{:<20}{}", "Data Store", "None")?;
+        }
+
+        writeln!(f, "{}", separator)?;
+
+        Ok(())
+    }
+}
+
 
 pub async fn start(
     registry: TaskRegistry,
@@ -109,7 +143,6 @@ pub async fn start(
 ) -> Result<(), SchedulerError> {
 
     let _ = logger::init();
-    info!("Scheduler starting");
 
     // Loading configurations to `sylklabs.core.Config` message from yaml/json/toml
     let cfgs = match configurations {
@@ -182,7 +215,7 @@ async fn init_distributed_grpc_scheduler(
     opts: ProcessOptions,
     db: Arc<AsyncMutex<dyn data::DataStore>>,
 ) -> Result<(), SchedulerError> {
-    debug!("configs dump: {:#?}", cfg);
+    println!("{}", cfg);
 
     let registry = opts.task_executors;
 
@@ -279,7 +312,7 @@ async fn init_single_process_grpc_scheduler(
     opts: ProcessOptions,
 ) -> Result<(), SchedulerError> {
 
-    debug!("configs dump: {:#?}", cfg);
+    println!("{}", cfg);
 
     let registry = opts.task_executors;
 

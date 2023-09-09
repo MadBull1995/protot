@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use core::fmt;
+
+use crate::internal::protot::core::Config;
+
 pub mod configs;
 pub mod error;
 pub mod logger;
@@ -54,17 +58,17 @@ pub fn get_protot_metadata() -> String {
         ("Github", REPOSITORY),
     ];
 
-    let separator = "=".repeat(60);
+    let separator = "=".repeat(80);
     let mut formatted_metadata = String::new();
 
     formatted_metadata.push_str(&separator);
     formatted_metadata.push('\n');
 
     for (key, value) in metadata {
-        formatted_metadata.push_str(&format!("{:<16}{}\n", key, value));
+        formatted_metadata.push_str(&format!("{:<20}{}\n", key, value));
     }
 
-    formatted_metadata.push_str(&separator);
+    // formatted_metadata.push_str(&separator);
 
     formatted_metadata
 }

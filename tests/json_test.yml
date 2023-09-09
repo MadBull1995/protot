@@ -1,7 +1,18 @@
 - file: json_config.json
+  valid: true
   content: |
     {
-        "node_type": "WORKER",
-        "num_workers": 4,
-        "grpc_port": 50051
+      "node_type": "WORKER",
+      "num_workers": 4,
+      "grpc_port": 50051,
+      "graceful_timeout": 20,
+      "load_balancer": "ROUND_ROBIN",
+      "heartbeat_interval": {
+        "seconds": 30,
+        "nanos": 0
+      },
+      "data_store": {
+        "type": "REDIS",
+        "host": "redis://127.0.0.1/"
+      }
     }

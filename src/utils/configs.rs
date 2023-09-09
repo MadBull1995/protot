@@ -190,6 +190,7 @@ mod tests {
     #[derive(Debug, Deserialize, Serialize)]
     struct TestConfig {
         file: String,
+        valid: bool,
         content: String,
     }
 

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 use async_trait::async_trait;
+use log::debug;
 // use prost_types::Any;
 use protobuf::well_known_types::any::Any;
-use redis::{Client, RedisError, aio::Connection, RedisResult, AsyncCommands};
+use redis::{Client, RedisError, aio::Connection, RedisResult, AsyncCommands, ConnectionLike};
 use tokio::sync::Mutex;
 use crate::{internal::protot::{scheduler::v1::ExecuteRequest, core::{Task, TaskState}}, SchedulerError, utils::current_timestamp};
 
@@ -18,12 +19,14 @@ pub struct RedisDataStore {
 
 impl RedisDataStore {
     pub async fn new(redis_url: &str) -> Result<Self, SchedulerError> {
-        let client = Client::open(redis_url)
-            .map_err(|err| SchedulerError::DataLayerError(format!("Error when calling redis host {:?}", err)))?;
+        let cleaned_redis_host = redis_url.replace("\"", "");
+        let redis_host = cleaned_redis_host.clone();
+        let client = Client::open(cleaned_redis_host)
+            .map_err(|err| SchedulerError::DataLayerError(format!("Error when calling redis host: {} {:?}", redis_host, err)))?;
         
         let con = client.get_async_connection().await
-            .map_err(|_| SchedulerError::DataLayerError(format!("Unable to connect to redis host: {}", redis_url)))?;
-        
+            .map_err(|_| SchedulerError::DataLayerError(format!("Unable to connect to redis host: {}", redis_host)))?;
+
         Ok(Self { con: Arc::new(Mutex::new(con)) })
     }
 }
